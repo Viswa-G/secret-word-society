@@ -1,9 +1,7 @@
 services:
   - type: web
     name: secret-word-society
-    runtime: node
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start
+    runtime: docker
     envVars:
       - key: NODE_ENV
         value: production
