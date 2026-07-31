@@ -3,6 +3,15 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "os": [
+    "win32",
+    "linux",
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
