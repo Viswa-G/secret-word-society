@@ -231,8 +231,8 @@ export function RevealScreen() {
 
   if (!assignment) return null;
 
-  const cardColor = "bg-yellow";
-  const softColor = "bg-[oklch(0.94_0.11_100)]";
+  const cardColor = assignment.isImposter ? "bg-[oklch(0.82_0.15_60)]" : "bg-yellow";
+  const softColor = assignment.isImposter ? "bg-[oklch(0.9_0.1_60)]" : "bg-[oklch(0.94_0.11_100)]";
 
   const startHold = () => {
     holdTimer.current = window.setTimeout(() => {
@@ -288,11 +288,18 @@ export function RevealScreen() {
                 <Hand className="h-20 w-20 text-foreground" strokeWidth={2} />
                 <p className="font-display text-lg font-extrabold">HOLD TO REVEAL</p>
               </div>
+            ) : assignment.isImposter ? (
+              <div className="mx-6 rounded-2xl border-2 border-foreground bg-white px-6 py-8 text-center card-shadow">
+                <p className="font-display text-2xl font-extrabold leading-tight text-destructive">
+                  YOU ARE THE<br />IMPOSTER!
+                </p>
+                {assignment.clue && (
+                  <p className="mt-3 text-lg text-foreground/80">Hint: {assignment.clue}</p>
+                )}
+              </div>
             ) : (
               <div className="rounded-2xl border-2 border-foreground bg-white px-8 py-4">
-                <p className="font-display text-3xl font-extrabold text-center">
-                  {assignment.isImposter ? assignment.clue || "YOU ARE THE IMPOSTER" : g.word}
-                </p>
+                <p className="font-display text-3xl font-extrabold">{g.word}</p>
               </div>
             )}
           </div>
@@ -351,9 +358,6 @@ export function ClueScreen() {
   const me = g.onlinePlayers.find((p) => p.id === g.localPlayer.id);
   const isHost = me ? me.isHost : false;
 
-  const myAssignment = g.assignments.find((a) => a.playerId === g.localPlayer.id);
-  const myWord = myAssignment?.isImposter ? myAssignment.clue || "YOU ARE THE IMPOSTER" : g.word;
-
   const submit = () => {
     if (!text.trim()) return;
     g.submitClueAction(g.currentRound, text);
@@ -401,10 +405,7 @@ export function ClueScreen() {
           {isMyTurn ? (
             <div className="rounded-2xl bg-card p-4 card-shadow space-y-3 border-2 border-pink/30">
               <p className="text-xs font-bold text-muted-foreground tracking-wider uppercase text-center">
-                YOUR CARD WORD:{" "}
-                <span className="text-sm text-pink font-extrabold tracking-normal font-body">
-                  {myWord}
-                </span>
+                YOUR CARD WORD: <span className="text-sm text-pink font-extrabold tracking-normal font-body">{g.word}</span>
               </p>
               <div className="flex gap-2">
                 <input
