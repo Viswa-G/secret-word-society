@@ -35,24 +35,32 @@ function Chip({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ClueBoard({ 
-  players, 
-  turnOrder, 
-  clues 
-}: { 
-  players: Player[], 
-  turnOrder: string[], 
-  clues: { [pid: string]: { [rnd: number]: string } } 
+function ClueBoard({
+  players,
+  turnOrder,
+  clues,
+}: {
+  players: Player[];
+  turnOrder: string[];
+  clues: { [pid: string]: { [rnd: number]: string } };
 }) {
   return (
     <div className="w-full rounded-2xl bg-card p-4 card-shadow overflow-x-auto my-3 max-h-[30vh] border border-border/40">
       <table className="w-full border-collapse text-left text-xs">
         <thead>
           <tr className="border-b border-border">
-            <th className="py-2 font-display font-extrabold pr-4 text-foreground/70 uppercase">Player</th>
-            <th className="py-2 font-display font-extrabold text-center text-foreground/70 uppercase">Round 1</th>
-            <th className="py-2 font-display font-extrabold text-center text-foreground/70 uppercase">Round 2</th>
-            <th className="py-2 font-display font-extrabold text-center text-foreground/70 uppercase">Round 3</th>
+            <th className="py-2 font-display font-extrabold pr-4 text-foreground/70 uppercase">
+              Player
+            </th>
+            <th className="py-2 font-display font-extrabold text-center text-foreground/70 uppercase">
+              Round 1
+            </th>
+            <th className="py-2 font-display font-extrabold text-center text-foreground/70 uppercase">
+              Round 2
+            </th>
+            <th className="py-2 font-display font-extrabold text-center text-foreground/70 uppercase">
+              Round 3
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -61,15 +69,28 @@ function ClueBoard({
             if (!p) return null;
             const pClues = clues[pid] || {};
             return (
-              <tr key={pid} className={`border-b border-border/40 last:border-0 ${p.eliminated ? "opacity-40 bg-destructive/5" : ""}`}>
+              <tr
+                key={pid}
+                className={`border-b border-border/40 last:border-0 ${p.eliminated ? "opacity-40 bg-destructive/5" : ""}`}
+              >
                 <td className="py-2 font-bold flex items-center gap-1 pr-4 truncate max-w-[110px]">
                   <span>{p.avatar}</span>
                   <span className="truncate">{p.name}</span>
-                  {p.eliminated && <span className="text-[8px] font-extrabold bg-destructive/15 text-destructive px-1.5 py-0.2 rounded shrink-0">OUT</span>}
+                  {p.eliminated && (
+                    <span className="text-[8px] font-extrabold bg-destructive/15 text-destructive px-1.5 py-0.2 rounded shrink-0">
+                      OUT
+                    </span>
+                  )}
                 </td>
-                <td className="py-2 text-center font-bold text-foreground/80">{pClues[1] || "—"}</td>
-                <td className="py-2 text-center font-bold text-foreground/80">{pClues[2] || "—"}</td>
-                <td className="py-2 text-center font-bold text-foreground/80">{pClues[3] || "—"}</td>
+                <td className="py-2 text-center font-bold text-foreground/80">
+                  {pClues[1] || "—"}
+                </td>
+                <td className="py-2 text-center font-bold text-foreground/80">
+                  {pClues[2] || "—"}
+                </td>
+                <td className="py-2 text-center font-bold text-foreground/80">
+                  {pClues[3] || "—"}
+                </td>
               </tr>
             );
           })}
@@ -79,14 +100,14 @@ function ClueBoard({
   );
 }
 
-function ChatPanel({ 
-  chat, 
-  localPlayerId, 
-  onSend 
-}: { 
-  chat: ChatMessage[], 
-  localPlayerId: string, 
-  onSend: (text: string) => void 
+function ChatPanel({
+  chat,
+  localPlayerId,
+  onSend,
+}: {
+  chat: ChatMessage[];
+  localPlayerId: string;
+  onSend: (text: string) => void;
 }) {
   const [text, setText] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -110,7 +131,9 @@ function ChatPanel({
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-lime"></span>
         </span>
-        <span className="font-display text-xs font-extrabold tracking-wider text-foreground/75 uppercase">Live Chat</span>
+        <span className="font-display text-xs font-extrabold tracking-wider text-foreground/75 uppercase">
+          Live Chat
+        </span>
       </div>
 
       {/* Messages list */}
@@ -123,13 +146,18 @@ function ChatPanel({
           chat.map((msg) => {
             const isMe = msg.playerId === localPlayerId;
             return (
-              <div key={msg.id} className={`flex items-start gap-1.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+              <div
+                key={msg.id}
+                className={`flex items-start gap-1.5 ${isMe ? "flex-row-reverse" : "flex-row"}`}
+              >
                 <span className="text-2xl select-none">{msg.playerAvatar}</span>
                 <div className={`flex flex-col max-w-[75%] ${isMe ? "items-end" : "items-start"}`}>
                   <span className="text-[9px] font-bold text-muted-foreground/70 mb-0.5 px-0.5">
                     {msg.playerName}
                   </span>
-                  <div className={`rounded-xl px-3 py-2 font-semibold text-xs leading-relaxed ${isMe ? "bg-pink text-white rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"}`}>
+                  <div
+                    className={`rounded-xl px-3 py-2 font-semibold text-xs leading-relaxed ${isMe ? "bg-pink text-white rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"}`}
+                  >
                     {msg.text}
                   </div>
                 </div>
@@ -148,7 +176,10 @@ function ChatPanel({
           placeholder="Type a message..."
           className="flex-1 bg-background rounded-xl px-3.5 py-2 font-semibold text-xs outline-none border border-border focus:border-pink transition"
         />
-        <button type="submit" className="grid h-8.5 w-8.5 shrink-0 place-items-center rounded-xl bg-pink text-white btn-3d active:scale-95 transition">
+        <button
+          type="submit"
+          className="grid h-8.5 w-8.5 shrink-0 place-items-center rounded-xl bg-pink text-white btn-3d active:scale-95 transition"
+        >
           <Send className="h-4 w-4" />
         </button>
       </form>
@@ -166,7 +197,7 @@ export function RevealScreen() {
 
   const isOnline = g.gameMode === "online";
 
-  const me = isOnline ? g.onlinePlayers.find(p => p.id === g.localPlayer.id) : null;
+  const me = isOnline ? g.onlinePlayers.find((p) => p.id === g.localPlayer.id) : null;
   const isSpectator = isOnline ? (me ? me.spectator : false) : false;
 
   useEffect(() => {
@@ -185,9 +216,12 @@ export function RevealScreen() {
         <div className="mx-auto w-full max-w-md flex-1 px-4 flex flex-col items-center justify-center text-center">
           <div className="rounded-3xl bg-card p-8 card-shadow space-y-4 border-2 border-dashed border-primary/20">
             <span className="text-6xl animate-pulse">🍿</span>
-            <h2 className="font-display text-2xl font-extrabold text-foreground">SPECTATING ROUND</h2>
+            <h2 className="font-display text-2xl font-extrabold text-foreground">
+              SPECTATING ROUND
+            </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              The game has started. You are spectating this round! You can watch clues and participate in chat once the clue rounds end.
+              The game has started. You are spectating this round! You can watch clues and
+              participate in chat once the clue rounds end.
             </p>
           </div>
         </div>
@@ -257,7 +291,7 @@ export function RevealScreen() {
             ) : (
               <div className="rounded-2xl border-2 border-foreground bg-white px-8 py-4">
                 <p className="font-display text-3xl font-extrabold text-center">
-                  {assignment.isImposter ? (assignment.clue || "YOU ARE THE IMPOSTER") : g.word}
+                  {assignment.isImposter ? assignment.clue || "YOU ARE THE IMPOSTER" : g.word}
                 </p>
               </div>
             )}
@@ -282,7 +316,9 @@ export function RevealScreen() {
                   <span
                     key={p.id}
                     className={`text-xs px-2.5 py-1 rounded-full font-bold transition-colors ${
-                      p.ready ? "bg-lime/20 text-foreground" : "bg-secondary text-muted-foreground/60"
+                      p.ready
+                        ? "bg-lime/20 text-foreground"
+                        : "bg-secondary text-muted-foreground/60"
                     }`}
                   >
                     {p.name} {p.ready ? "✓" : "..."}
@@ -316,7 +352,7 @@ export function ClueScreen() {
   const isHost = me ? me.isHost : false;
 
   const myAssignment = g.assignments.find((a) => a.playerId === g.localPlayer.id);
-  const myWord = myAssignment?.isImposter ? (myAssignment.clue || "YOU ARE THE IMPOSTER") : g.word;
+  const myWord = myAssignment?.isImposter ? myAssignment.clue || "YOU ARE THE IMPOSTER" : g.word;
 
   const submit = () => {
     if (!text.trim()) return;
@@ -350,18 +386,14 @@ export function ClueScreen() {
               </h2>
             </div>
             <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
-              {isMyTurn 
-                ? "Enter a one-word clue that describes your card without revealing it directly." 
+              {isMyTurn
+                ? "Enter a one-word clue that describes your card without revealing it directly."
                 : "Wait for the active player. All clues appear instantly below."}
             </p>
           </div>
 
           {/* Live Clue Board */}
-          <ClueBoard 
-            players={g.onlinePlayers} 
-            turnOrder={g.turnOrder} 
-            clues={g.clues} 
-          />
+          <ClueBoard players={g.onlinePlayers} turnOrder={g.turnOrder} clues={g.clues} />
         </div>
 
         {/* Input box / skip timer */}
@@ -369,7 +401,10 @@ export function ClueScreen() {
           {isMyTurn ? (
             <div className="rounded-2xl bg-card p-4 card-shadow space-y-3 border-2 border-pink/30">
               <p className="text-xs font-bold text-muted-foreground tracking-wider uppercase text-center">
-                YOUR CARD WORD: <span className="text-sm text-pink font-extrabold tracking-normal font-body">{myWord}</span>
+                YOUR CARD WORD:{" "}
+                <span className="text-sm text-pink font-extrabold tracking-normal font-body">
+                  {myWord}
+                </span>
               </p>
               <div className="flex gap-2">
                 <input
@@ -440,25 +475,25 @@ export function DiscussScreen() {
               DISCUSSION PHASE
             </p>
             <p className="text-sm font-semibold mt-1">
-              <span className="rounded bg-lime px-2 py-0.5 font-extrabold text-foreground">{starter}</span> starts the conversation!
+              <span className="rounded bg-lime px-2 py-0.5 font-extrabold text-foreground">
+                {starter}
+              </span>{" "}
+              starts the conversation!
             </p>
             <p className="text-[10px] text-muted-foreground mt-1 max-w-[300px]">
-              Chat, debate clues, and catch the Imposter. Press "Ready to Vote" when ready to proceed.
+              Chat, debate clues, and catch the Imposter. Press "Ready to Vote" when ready to
+              proceed.
             </p>
           </div>
 
           {/* Clue Board */}
-          <ClueBoard 
-            players={g.onlinePlayers} 
-            turnOrder={g.turnOrder} 
-            clues={g.clues} 
-          />
+          <ClueBoard players={g.onlinePlayers} turnOrder={g.turnOrder} clues={g.clues} />
 
           {/* Discussion Chat */}
-          <ChatPanel 
-            chat={g.onlineChat} 
-            localPlayerId={g.localPlayer.id} 
-            onSend={g.sendChatMessage} 
+          <ChatPanel
+            chat={g.onlineChat}
+            localPlayerId={g.localPlayer.id}
+            onSend={g.sendChatMessage}
           />
 
           {/* Ready system */}
@@ -472,7 +507,7 @@ export function DiscussScreen() {
                 {isReady ? "WAITING FOR OTHERS..." : "READY TO VOTE"}
               </button>
             )}
-            
+
             <div className="flex flex-wrap gap-1.5 justify-center">
               {g.onlinePlayers
                 .filter((p) => !p.spectator && p.connected)
@@ -480,7 +515,9 @@ export function DiscussScreen() {
                   <span
                     key={p.id}
                     className={`text-xs px-2.5 py-1 rounded-full font-bold transition-colors ${
-                      p.ready ? "bg-lime/20 text-foreground" : "bg-secondary text-muted-foreground/60"
+                      p.ready
+                        ? "bg-lime/20 text-foreground"
+                        : "bg-secondary text-muted-foreground/60"
                     }`}
                   >
                     {p.name} {p.ready ? "✓" : "..."}
@@ -495,7 +532,9 @@ export function DiscussScreen() {
 
   // Classic Discuss Screen (original)
   const starter =
-    g.assignments.find((a) => !a.isImposter)?.playerName ?? g.assignments[0]?.playerName ?? "Someone";
+    g.assignments.find((a) => !a.isImposter)?.playerName ??
+    g.assignments[0]?.playerName ??
+    "Someone";
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">
@@ -542,9 +581,7 @@ export function VoteScreen() {
     g.submitVoteAction(selectedId);
   };
 
-  const candidates = g.onlinePlayers.filter(
-    (p) => !p.spectator && !p.eliminated
-  );
+  const candidates = g.onlinePlayers.filter((p) => !p.spectator && !p.eliminated);
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">
@@ -559,23 +596,29 @@ export function VoteScreen() {
             VOTING PHASE — ROUND {g.currentVoteIndex + 1}
           </p>
           <h2 className="font-display text-xl font-extrabold text-foreground mt-0.5">
-            {myVote ? "VOTE REGISTERED!" : isSpectator || isEliminated ? "WATCHING VOTES..." : "CAST YOUR BALLOT!"}
+            {myVote
+              ? "VOTE REGISTERED!"
+              : isSpectator || isEliminated
+                ? "WATCHING VOTES..."
+                : "CAST YOUR BALLOT!"}
           </h2>
           <p className="text-[10px] text-muted-foreground mt-1">
-            {myVote 
-              ? "Your vote is locked. Waiting for other players to submit." 
-              : isSpectator 
-              ? "You are spectating. You can chat but cannot vote." 
-              : isEliminated 
-              ? "You are eliminated. You can chat but cannot vote." 
-              : "Tap a player below to choose them, then confirm your vote."}
+            {myVote
+              ? "Your vote is locked. Waiting for other players to submit."
+              : isSpectator
+                ? "You are spectating. You can chat but cannot vote."
+                : isEliminated
+                  ? "You are eliminated. You can chat but cannot vote."
+                  : "Tap a player below to choose them, then confirm your vote."}
           </p>
         </div>
 
         {/* Voting Ballot Box */}
         {!(isSpectator || isEliminated) && !myVote && (
           <div className="space-y-1.5 select-none">
-            <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase ml-1">Ballot:</p>
+            <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase ml-1">
+              Ballot:
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {candidates.map((p) => {
                 const isSelected = selectedId === p.id;
@@ -585,8 +628,8 @@ export function VoteScreen() {
                     key={p.id}
                     onClick={() => setSelectedId(p.id)}
                     className={`rounded-2xl p-2.5 card-shadow flex flex-col items-center gap-1 border-2 text-center transition ${
-                      isSelected 
-                        ? "bg-pink border-pink text-white" 
+                      isSelected
+                        ? "bg-pink border-pink text-white"
                         : "bg-card border-border text-foreground hover:border-pink/50"
                     }`}
                   >
@@ -599,7 +642,7 @@ export function VoteScreen() {
                 );
               })}
             </div>
-            
+
             <button
               onClick={submitVote}
               disabled={!selectedId}
@@ -613,7 +656,9 @@ export function VoteScreen() {
         {/* Waiting Status / Voted List */}
         {(myVote || isSpectator || isEliminated) && (
           <div className="rounded-2xl bg-card p-3 card-shadow space-y-2 border border-border select-none">
-            <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase text-center">Voter list:</p>
+            <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase text-center">
+              Voter list:
+            </p>
             <div className="flex flex-wrap gap-1.5 justify-center">
               {candidates.map((p) => {
                 const hasVoted = !!p.votedFor;
@@ -621,7 +666,9 @@ export function VoteScreen() {
                   <span
                     key={p.id}
                     className={`text-[11px] px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 ${
-                      hasVoted ? "bg-lime/20 text-foreground" : "bg-secondary text-muted-foreground/60"
+                      hasVoted
+                        ? "bg-lime/20 text-foreground"
+                        : "bg-secondary text-muted-foreground/60"
                     }`}
                   >
                     <span>{p.avatar}</span>
@@ -629,7 +676,9 @@ export function VoteScreen() {
                     {hasVoted ? (
                       <span className="text-[9px] text-lime font-extrabold">✓</span>
                     ) : (
-                      <span className="text-[9px] text-muted-foreground animate-pulse font-bold">...</span>
+                      <span className="text-[9px] text-muted-foreground animate-pulse font-bold">
+                        ...
+                      </span>
                     )}
                   </span>
                 );
@@ -639,17 +688,13 @@ export function VoteScreen() {
         )}
 
         {/* Clue Board */}
-        <ClueBoard 
-          players={g.onlinePlayers} 
-          turnOrder={g.turnOrder} 
-          clues={g.clues} 
-        />
-        
+        <ClueBoard players={g.onlinePlayers} turnOrder={g.turnOrder} clues={g.clues} />
+
         {/* Chat window */}
-        <ChatPanel 
-          chat={g.onlineChat} 
-          localPlayerId={g.localPlayer.id} 
-          onSend={g.sendChatMessage} 
+        <ChatPanel
+          chat={g.onlineChat}
+          localPlayerId={g.localPlayer.id}
+          onSend={g.sendChatMessage}
         />
       </div>
     </div>
@@ -665,7 +710,7 @@ export function ResultScreen() {
     const isHost = me ? me.isHost : false;
 
     const secretWord = g.word;
-    const hintWord = imposters.find(imp => imp.clue)?.clue;
+    const hintWord = imposters.find((imp) => imp.clue)?.clue;
 
     return (
       <div className="min-h-dvh bg-background flex flex-col">
@@ -685,27 +730,32 @@ export function ResultScreen() {
             <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
               <span className="text-xs font-bold text-foreground/80">Impostors:</span>
               {imposters.map((imp) => (
-                <span key={imp.playerId} className="rounded-full bg-pink/15 text-pink font-extrabold px-2.5 py-0.5 text-xs border border-pink/20">
+                <span
+                  key={imp.playerId}
+                  className="rounded-full bg-pink/15 text-pink font-extrabold px-2.5 py-0.5 text-xs border border-pink/20"
+                >
                   {imp.playerName}
                 </span>
               ))}
             </div>
             {hintWord && (
-              <p className="mt-2 text-xs text-foreground/75 italic">
-                Hint given: “{hintWord}”
-              </p>
+              <p className="mt-2 text-xs text-foreground/75 italic">Hint given: “{hintWord}”</p>
             )}
           </div>
 
           {/* Secret Word */}
           <div className="rounded-2xl bg-card p-4.5 card-shadow flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase">SECRET WORD</p>
+              <p className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase">
+                SECRET WORD
+              </p>
               <p className="font-display text-2xl font-extrabold text-pink mt-0.5">{secretWord}</p>
             </div>
             {g.category && (
               <div className="text-right">
-                <p className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase">CATEGORY</p>
+                <p className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase">
+                  CATEGORY
+                </p>
                 <p className="font-bold text-foreground/80 text-sm mt-0.5">{g.category}</p>
               </div>
             )}
@@ -714,27 +764,40 @@ export function ResultScreen() {
           {/* Vote breakdown */}
           {g.votingHistory.length > 0 && (
             <div className="rounded-2xl bg-card p-4 card-shadow border border-border/70 space-y-2.5 max-h-[22vh] overflow-y-auto select-none">
-              <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase text-center">VOTING ROUND HISTORY:</p>
+              <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase text-center">
+                VOTING ROUND HISTORY:
+              </p>
               {g.votingHistory.map((history, idx) => {
-                const elimPlayer = g.onlinePlayers.find(p => p.id === history.eliminatedPlayerId);
+                const elimPlayer = g.onlinePlayers.find((p) => p.id === history.eliminatedPlayerId);
                 return (
-                  <div key={idx} className="text-xs border-b border-border/40 last:border-0 pb-2 last:pb-0 space-y-1.5">
+                  <div
+                    key={idx}
+                    className="text-xs border-b border-border/40 last:border-0 pb-2 last:pb-0 space-y-1.5"
+                  >
                     <p className="font-bold text-foreground/80">
-                      Vote #{history.voteIndex + 1}: {elimPlayer ? (
+                      Vote #{history.voteIndex + 1}:{" "}
+                      {elimPlayer ? (
                         <>
-                          Eliminated <span className="text-pink font-extrabold">{elimPlayer.name}</span>
+                          Eliminated{" "}
+                          <span className="text-pink font-extrabold">{elimPlayer.name}</span>
                           {history.wasImposter ? (
-                            <span className="ml-1 bg-destructive/15 text-destructive font-bold px-1.5 py-0.2 rounded text-[8px] uppercase">IMPOSTOR</span>
+                            <span className="ml-1 bg-destructive/15 text-destructive font-bold px-1.5 py-0.2 rounded text-[8px] uppercase">
+                              IMPOSTOR
+                            </span>
                           ) : (
-                            <span className="ml-1 bg-secondary text-muted-foreground font-bold px-1.5 py-0.2 rounded text-[8px] uppercase">CREWMATE</span>
+                            <span className="ml-1 bg-secondary text-muted-foreground font-bold px-1.5 py-0.2 rounded text-[8px] uppercase">
+                              CREWMATE
+                            </span>
                           )}
                         </>
-                      ) : "No one eliminated (Tie)"}
+                      ) : (
+                        "No one eliminated (Tie)"
+                      )}
                     </p>
                     <div className="grid grid-cols-2 gap-x-2.5 gap-y-0.5 pl-2 border-l border-border/50 text-[10px] text-muted-foreground/80 font-semibold">
                       {history.votes.map((vote, vIdx) => {
-                        const voter = g.onlinePlayers.find(p => p.id === vote.voterId);
-                        const target = g.onlinePlayers.find(p => p.id === vote.targetId);
+                        const voter = g.onlinePlayers.find((p) => p.id === vote.voterId);
+                        const target = g.onlinePlayers.find((p) => p.id === vote.targetId);
                         if (!voter || !target) return null;
                         return (
                           <div key={vIdx} className="truncate">
@@ -750,17 +813,13 @@ export function ResultScreen() {
           )}
 
           {/* Live Clue Board */}
-          <ClueBoard 
-            players={g.onlinePlayers} 
-            turnOrder={g.turnOrder} 
-            clues={g.clues} 
-          />
+          <ClueBoard players={g.onlinePlayers} turnOrder={g.turnOrder} clues={g.clues} />
 
           {/* Chat panel */}
-          <ChatPanel 
-            chat={g.onlineChat} 
-            localPlayerId={g.localPlayer.id} 
-            onSend={g.sendChatMessage} 
+          <ChatPanel
+            chat={g.onlineChat}
+            localPlayerId={g.localPlayer.id}
+            onSend={g.sendChatMessage}
           />
 
           {/* New Game trigger */}
@@ -777,7 +836,7 @@ export function ResultScreen() {
                 🎮 WAITING FOR HOST TO RESTART GAME
               </div>
             )}
-            
+
             <button
               onClick={g.exitToLobby}
               className="w-full rounded-2xl bg-secondary py-3.5 font-display font-bold text-foreground card-shadow hover:bg-secondary/70 active:scale-95 transition"
@@ -797,19 +856,27 @@ export function ResultScreen() {
         <TopBar onClose={g.exitToLobby} />
       </div>
       <div className="mx-auto w-full max-w-md flex-1 px-4 pt-10 text-center">
-        <p className="font-display text-sm font-extrabold tracking-widest text-foreground/70">IMPOSTERS:</p>
+        <p className="font-display text-sm font-extrabold tracking-widest text-foreground/70">
+          IMPOSTERS:
+        </p>
         <h2 className="mt-2 font-display text-4xl font-extrabold">
           {imposters.map((i) => i.playerName).join(", ")}
         </h2>
         {imposters.some((i) => i.clue) && (
           <p className="mt-3 text-foreground/70">
-            Hints: {imposters.filter((i) => i.clue).map((i) => `${i.playerName} → “${i.clue}”`).join(" · ")}
+            Hints:{" "}
+            {imposters
+              .filter((i) => i.clue)
+              .map((i) => `${i.playerName} → “${i.clue}”`)
+              .join(" · ")}
           </p>
         )}
 
         <div className="mx-auto my-6 h-px w-4/5 bg-border" />
 
-        <p className="font-display text-sm font-extrabold tracking-widest text-foreground/70">WORD:</p>
+        <p className="font-display text-sm font-extrabold tracking-widest text-foreground/70">
+          WORD:
+        </p>
         <p className="mt-2 font-display text-4xl font-extrabold text-pink">{g.word}</p>
         {g.category && <p className="mt-1 text-sm text-muted-foreground">{g.category}</p>}
 
