@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { CATEGORIES, type WordEntry } from "../data/categories";
+import { selectAndMarkWord, selectImposters } from "./temp-storage";
 
 export type Phase = "lobby" | "reveal" | "clue" | "discuss" | "vote" | "result";
 
@@ -275,14 +276,13 @@ export function startGame(roomId: string, hostId: string) {
   }
   if (pool.length === 0) return;
 
-  const chosen = pickRandom(pool);
+  const chosen = selectAndMarkWord(pool);
   const word = chosen.entry.word;
   const clueHints = chosen.entry.clues;
 
   // Assign roles
-  const shuffledPlayers = shuffle(activePlayers);
-  const count = Math.min(room.settings.imposterCount, shuffledPlayers.length - 1);
-  const imposterIds = new Set(shuffledPlayers.slice(0, count).map((p) => p.id));
+  const activePlayerIds = activePlayers.map((p) => p.id);
+  const imposterIds = new Set(selectImposters(activePlayerIds, room.settings.imposterCount));
 
   // Determine play order
   const turnOrder = shuffle(activePlayers.map((p) => p.id));
