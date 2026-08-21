@@ -360,6 +360,9 @@ export function ClueScreen() {
   const me = g.onlinePlayers.find((p) => p.id === g.localPlayer.id);
   const isHost = me ? me.isHost : false;
 
+  const myAssignment = g.assignments.find((a) => a.playerId === g.localPlayer.id);
+  const displayWord = myAssignment?.isImposter ? (myAssignment.clue || "Imposter Hint") : g.word;
+
   const submit = () => {
     if (!text.trim()) return;
     g.submitClueAction(g.currentRound, text);
@@ -407,10 +410,7 @@ export function ClueScreen() {
           {isMyTurn ? (
             <div className="rounded-2xl bg-card p-4 card-shadow space-y-3 border-2 border-pink/30">
               <p className="text-xs font-bold text-muted-foreground tracking-wider uppercase text-center">
-                YOUR CARD WORD:{" "}
-                <span className="text-sm text-pink font-extrabold tracking-normal font-body">
-                  {g.word}
-                </span>
+                YOUR CARD WORD: <span className="text-sm text-pink font-extrabold tracking-normal font-body">{displayWord}</span>
               </p>
               <div className="flex gap-2">
                 <input

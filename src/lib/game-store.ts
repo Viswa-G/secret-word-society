@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { CATEGORIES, type WordEntry, type Category } from "@/data/categories";
+import { selectAndMarkWord, selectImposters } from "@/lib/temp-storage";
 
 export type Phase = "lobby" | "reveal" | "clue" | "discuss" | "vote" | "result";
 
@@ -334,27 +335,27 @@ export const useGame = create<GameState>()(
           for (const e of cat.words) pool.push({ entry: e, cat: cat.name });
         }
         if (pool.length === 0) return;
-        const chosen = pickRandom(pool);
+        const chosen = selectAndMarkWord(pool);
         const word = chosen.entry.word;
         const clues = chosen.entry.clues;
 
-        const order = shuffleIndexes(players.length);
-        const imposterIdx = new Set(order.slice(0, Math.min(imposterCount, players.length - 1)));
+        const chosenImposterNames = new Set(selectImposters(players, imposterCount));
 
         const playOrder = shuffleIndexes(players.length);
 
         const assignments: Assignment[] = playOrder.map((pi, seatIdx) => {
-          const isImposter = imposterIdx.has(pi);
+          const playerName = players[pi];
+          const isImposter = chosenImposterNames.has(playerName);
           let clue: string | undefined;
           if (isImposter && imposterHintEnabled) {
             const imposterSeats = playOrder
-              .map((p, idx) => ({ p, idx }))
-              .filter(({ p }) => imposterIdx.has(p));
+              .map((p, idx) => ({ name: players[p], idx }))
+              .filter(({ name }) => chosenImposterNames.has(name));
             const myIdx = imposterSeats.findIndex((s) => s.idx === seatIdx);
             clue = clues[myIdx % clues.length];
           }
           return {
-            playerName: players[pi],
+            playerName,
             isImposter,
             clue,
           };
