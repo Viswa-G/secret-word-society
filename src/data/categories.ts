@@ -1,7 +1,7 @@
 export type WordEntry = {
   word: string;
-  // clues[0] and clues[1] are alternative imposter hints for the same word (never the word itself, related but tricky)
-  clues: [string, string];
+  // clues are alternative imposter hints for the same word (never the word itself, related but tricky)
+  clues: string[];
 };
 
 export type Category = {

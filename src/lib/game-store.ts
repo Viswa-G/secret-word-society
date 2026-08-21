@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { CATEGORIES, type WordEntry } from "@/data/categories";
+import { CATEGORIES, type WordEntry, type Category } from "@/data/categories";
 
 export type Phase = "lobby" | "reveal" | "clue" | "discuss" | "vote" | "result";
 
@@ -45,6 +45,7 @@ type GameState = {
   gameMode: "classic" | "online";
   players: string[]; // for classic mode names
   categories: string[]; // selected category ids
+  customCategories: Category[]; // custom category & words database
   imposterCount: number;
   timeLimitEnabled: boolean;
   imposterHintEnabled: boolean;
@@ -82,6 +83,8 @@ type GameState = {
   updatePlayer: (i: number, name: string) => void;
   setCategories: (c: string[]) => void;
   toggleCategory: (id: string) => void;
+  setCustomCategories: (cats: Category[]) => void;
+  resetCustomCategories: () => void;
   setImposterCount: (n: number) => void;
   setTimeLimitEnabled: (b: boolean) => void;
   setImposterHintEnabled: (b: boolean) => void;
@@ -106,9 +109,27 @@ type GameState = {
   markReadyToVoteAction: () => void;
 };
 
-const AVATARS = ["🐱", "🐶", "🦊", "🦁", "🐯", "🐼", "🐨", "🐸", "🐰", "🐵", "🐣", "🦄", "🐙", "🦖", "🦈", "🦘", "🦥"];
+const AVATARS = [
+  "🐱",
+  "🐶",
+  "🦊",
+  "🦁",
+  "🐯",
+  "🐼",
+  "🐨",
+  "🐸",
+  "🐰",
+  "🐵",
+  "🐣",
+  "🦄",
+  "🐙",
+  "🦖",
+  "🦈",
+  "🦘",
+  "🦥",
+];
 
-const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const pickRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 const shuffleIndexes = (n: number): number[] => {
   const a = Array.from({ length: n }, (_, i) => i);
@@ -140,7 +161,7 @@ const generateLocalPlayer = () => {
 // SSE stream manager
 let eventSource: EventSource | null = null;
 
-const sendAction = async (roomId: string, playerId: string, action: string, data?: any) => {
+const sendAction = async (roomId: string, playerId: string, action: string, data?: unknown) => {
   try {
     const res = await fetch("/api/action", {
       method: "POST",
@@ -161,6 +182,7 @@ export const useGame = create<GameState>()(
       gameMode: "classic",
       players: ["Yuvan", "Viswa", "Vinay", "Subash", "Abinesh", "Dhilip"],
       categories: ["everyday", "foods"],
+      customCategories: CATEGORIES,
       imposterCount: 1,
       timeLimitEnabled: false,
       imposterHintEnabled: true,
@@ -224,6 +246,7 @@ export const useGame = create<GameState>()(
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: get().imposterCount,
             categories: nextCategories,
+            customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
           });
@@ -231,11 +254,36 @@ export const useGame = create<GameState>()(
           set({ categories: nextCategories });
         }
       },
+      setCustomCategories: (cats) => {
+        set({ customCategories: cats });
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
+            imposterCount: get().imposterCount,
+            categories: get().categories,
+            customCategories: cats,
+            timeLimitEnabled: get().timeLimitEnabled,
+            imposterHintEnabled: get().imposterHintEnabled,
+          });
+        }
+      },
+      resetCustomCategories: () => {
+        set({ customCategories: CATEGORIES });
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
+            imposterCount: get().imposterCount,
+            categories: get().categories,
+            customCategories: CATEGORIES,
+            timeLimitEnabled: get().timeLimitEnabled,
+            imposterHintEnabled: get().imposterHintEnabled,
+          });
+        }
+      },
       setImposterCount: (n) => {
         if (get().gameMode === "online" && get().roomId) {
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: n,
             categories: get().categories,
+            customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
           });
@@ -248,6 +296,7 @@ export const useGame = create<GameState>()(
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: get().imposterCount,
             categories: get().categories,
+            customCategories: get().customCategories,
             timeLimitEnabled: b,
             imposterHintEnabled: get().imposterHintEnabled,
           });
@@ -260,6 +309,7 @@ export const useGame = create<GameState>()(
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: get().imposterCount,
             categories: get().categories,
+            customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: b,
           });
@@ -279,7 +329,7 @@ export const useGame = create<GameState>()(
 
         const pool: { entry: WordEntry; cat: string }[] = [];
         for (const cid of categories) {
-          const cat = CATEGORIES.find((c) => c.id === cid);
+          const cat = get().customCategories.find((c) => c.id === cid);
           if (!cat) continue;
           for (const e of cat.words) pool.push({ entry: e, cat: cat.name });
         }
@@ -379,24 +429,30 @@ export const useGame = create<GameState>()(
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            const mappedAssignments: Assignment[] = data.assignments.map((as: any) => {
-              const p = data.players.find((pl: any) => pl.id === as.playerId);
-              return {
-                playerId: as.playerId,
-                playerName: p ? p.name : "Unknown",
-                isImposter: as.isImposter,
-                clue: as.clue,
-              };
-            });
+            const mappedAssignments: Assignment[] = data.assignments.map(
+              (as: { playerId: string; isImposter: boolean; clue?: string }) => {
+                const p = data.players.find(
+                  (pl: { id: string; name: string }) => pl.id === as.playerId,
+                );
+                return {
+                  playerId: as.playerId,
+                  playerName: p ? p.name : "Unknown",
+                  isImposter: as.isImposter,
+                  clue: as.clue,
+                };
+              },
+            );
 
             // Map player list
-            const plNames = data.players.map((p: any) => p.name);
+            const plNames = data.players.map((p: { name: string }) => p.name);
 
             // Find current local player index in assignments list to set card index
             const myIndex = data.turnOrder.indexOf(localPlayer.id);
 
             // Check if local player is ready
-            const meObj = data.players.find((p: any) => p.id === localPlayer.id);
+            const meObj = data.players.find(
+              (p: { id: string; ready: boolean }) => p.id === localPlayer.id,
+            );
             const myReadyState = meObj ? meObj.ready : false;
 
             set({
@@ -510,6 +566,6 @@ export const useGame = create<GameState>()(
         imposterHintEnabled: state.imposterHintEnabled,
         localPlayer: state.localPlayer,
       }),
-    }
-  )
+    },
+  ),
 );

@@ -78,7 +78,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Imposter Who? — Party Word Game" },
-      { name: "description", content: "A pass-and-play party game. One player is the imposter — can the others catch them?" },
+      {
+        name: "description",
+        content:
+          "A pass-and-play party game. One player is the imposter — can the others catch them?",
+      },
       { property: "og:title", content: "Imposter Who?" },
       { property: "og:description", content: "The pass-and-play imposter word game for friends." },
       { property: "og:type", content: "website" },

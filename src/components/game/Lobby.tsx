@@ -1,12 +1,46 @@
 import { useState, useEffect } from "react";
-import { HelpCircle, Settings, Users, Globe, Pencil, ChevronRight, Play, Crown, Share2, Star, Lightbulb, AlarmClock, X, Plus } from "lucide-react";
+import {
+  HelpCircle,
+  Settings,
+  Users,
+  Globe,
+  Pencil,
+  ChevronRight,
+  Play,
+  Crown,
+  Share2,
+  Star,
+  Lightbulb,
+  AlarmClock,
+  X,
+  Plus,
+  Box,
+} from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
-import { CATEGORIES } from "@/data/categories";
 import { toast } from "sonner";
 
 type Sheet = null | "players" | "categories" | "imposters";
 
-const AVATARS = ["🐱", "🐶", "🦊", "🦁", "🐯", "🐼", "🐨", "🐸", "🐰", "🐵", "🐣", "🦄", "🐙", "🦖", "🦈", "🦘", "🦥"];
+const AVATARS = [
+  "🐱",
+  "🐶",
+  "🦊",
+  "🦁",
+  "🐯",
+  "🐼",
+  "🐨",
+  "🐸",
+  "🐰",
+  "🐵",
+  "🐣",
+  "🦄",
+  "🐙",
+  "🦖",
+  "🦈",
+  "🦘",
+  "🦥",
+];
 
 export function Lobby() {
   const g = useGame();
@@ -22,14 +56,14 @@ export function Lobby() {
   }, []);
 
   const isOnline = g.gameMode === "online";
-  
+
   // Who is the host?
   const me = isOnline ? g.onlinePlayers.find((p) => p.id === g.localPlayer.id) : null;
   const isHost = isOnline ? (me ? me.isHost : false) : true;
 
   // Connected active players count (exclude spectators)
-  const activePlayersCount = isOnline 
-    ? g.onlinePlayers.filter(p => p.connected && !p.spectator).length 
+  const activePlayersCount = isOnline
+    ? g.onlinePlayers.filter((p) => p.connected && !p.spectator).length
     : g.players.length;
 
   const canStart = isOnline
@@ -75,7 +109,8 @@ export function Lobby() {
   const copyInviteLink = () => {
     if (!g.roomId) return;
     const url = `${window.location.origin}/?room=${g.roomId}`;
-    navigator.clipboard.writeText(url)
+    navigator.clipboard
+      .writeText(url)
       .then(() => toast.success("Invite link copied to clipboard!"))
       .catch(() => toast.error("Failed to copy link"));
   };
@@ -93,9 +128,22 @@ export function Lobby() {
             <br />
             <span className="text-6xl">WHO?</span>
           </h1>
-          <button className="text-muted-foreground/70 hover:text-foreground" aria-label="Settings">
-            <Settings className="h-8 w-8" strokeWidth={2} />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/word-box"
+              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-1 relative"
+              aria-label="Word Box"
+              title="Word Box"
+            >
+              <Box className="h-7 w-7" strokeWidth={2.5} />
+            </Link>
+            <button
+              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-1"
+              aria-label="Settings"
+            >
+              <Settings className="h-8 w-8" strokeWidth={2} />
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 space-y-4">
@@ -110,7 +158,9 @@ export function Lobby() {
                 {g.localPlayer.avatar}
               </button>
               <div>
-                <p className="text-[10px] font-bold text-muted-foreground tracking-wider">YOUR IDENTITY (TAP NAME TO EDIT)</p>
+                <p className="text-[10px] font-bold text-muted-foreground tracking-wider">
+                  YOUR IDENTITY (TAP NAME TO EDIT)
+                </p>
                 {isEditingName ? (
                   <input
                     value={editName}
@@ -158,7 +208,8 @@ export function Lobby() {
               <strong>Classic:</strong> Pass the device between players in the same room.
             </p>
             <p className="text-sm leading-relaxed text-foreground/80">
-              <strong>Online:</strong> Play with friends in real-time. Share the invite link to join!
+              <strong>Online:</strong> Play with friends in real-time. Share the invite link to
+              join!
             </p>
           </Section>
 
@@ -170,7 +221,9 @@ export function Lobby() {
                   <div className="mb-0.5 flex items-center gap-1.5 text-sm font-bold tracking-wider text-foreground/70">
                     <Globe className="h-4.5 w-4.5 text-pink animate-pulse" /> INVITE LINK
                   </div>
-                  <p className="text-xs text-muted-foreground">Players join instantly upon clicking this link!</p>
+                  <p className="text-xs text-muted-foreground">
+                    Players join instantly upon clicking this link!
+                  </p>
                 </div>
                 <button
                   onClick={copyInviteLink}
@@ -183,42 +236,50 @@ export function Lobby() {
           )}
 
           {/* Players */}
-          <SheetRow 
-            icon="✋" 
-            title="PLAYERS" 
-            onClick={() => setSheet("players")}
-          >
+          <SheetRow icon="✋" title="PLAYERS" onClick={() => setSheet("players")}>
             <div className="mt-1 flex flex-wrap gap-2">
-              {isOnline ? (
-                g.onlinePlayers.map((p) => {
-                  const isMe = p.id === g.localPlayer.id;
-                  return (
-                    <Chip key={p.id}>
-                      <span className="text-base">{p.avatar}</span>
-                      <span className={`font-bold ${p.connected ? "text-foreground/90" : "text-muted-foreground/50 line-through"} flex items-center gap-1`}>
-                        {p.name}
-                        {isMe && <span className="text-[10px] text-pink font-extrabold">(YOU)</span>}
-                        {p.isHost && <Crown className="h-3 w-3 text-yellow fill-yellow shrink-0" />}
-                        {p.spectator && <span className="text-[10px] font-extrabold text-muted-foreground/60">(SPEC)</span>}
-                        {!p.connected && <span className="text-[10px] font-extrabold text-destructive/80">(OFF)</span>}
-                      </span>
+              {isOnline
+                ? g.onlinePlayers.map((p) => {
+                    const isMe = p.id === g.localPlayer.id;
+                    return (
+                      <Chip key={p.id}>
+                        <span className="text-base">{p.avatar}</span>
+                        <span
+                          className={`font-bold ${p.connected ? "text-foreground/90" : "text-muted-foreground/50 line-through"} flex items-center gap-1`}
+                        >
+                          {p.name}
+                          {isMe && (
+                            <span className="text-[10px] text-pink font-extrabold">(YOU)</span>
+                          )}
+                          {p.isHost && (
+                            <Crown className="h-3 w-3 text-yellow fill-yellow shrink-0" />
+                          )}
+                          {p.spectator && (
+                            <span className="text-[10px] font-extrabold text-muted-foreground/60">
+                              (SPEC)
+                            </span>
+                          )}
+                          {!p.connected && (
+                            <span className="text-[10px] font-extrabold text-destructive/80">
+                              (OFF)
+                            </span>
+                          )}
+                        </span>
+                      </Chip>
+                    );
+                  })
+                : g.players.map((p, i) => (
+                    <Chip key={i}>
+                      <span className="font-bold text-foreground/90">{p}</span>
                     </Chip>
-                  );
-                })
-              ) : (
-                g.players.map((p, i) => (
-                  <Chip key={i}>
-                    <span className="font-bold text-foreground/90">{p}</span>
-                  </Chip>
-                ))
-              )}
+                  ))}
             </div>
           </SheetRow>
 
           {/* Categories */}
-          <SheetRow 
-            icon="🐔" 
-            title="CATEGORIES" 
+          <SheetRow
+            icon="🐔"
+            title="CATEGORIES"
             onClick={() => {
               if (isOnline && !isHost) {
                 toast.info("Only the Host can edit categories");
@@ -229,7 +290,7 @@ export function Lobby() {
           >
             <div className="mt-1 flex flex-wrap gap-2">
               {g.categories.map((cid) => {
-                const c = CATEGORIES.find((x) => x.id === cid);
+                const c = g.customCategories.find((x) => x.id === cid);
                 if (!c) return null;
                 return (
                   <Chip key={cid}>
@@ -242,9 +303,9 @@ export function Lobby() {
           </SheetRow>
 
           {/* Imposters */}
-          <SheetRow 
-            icon="🥷" 
-            title="IMPOSTERS" 
+          <SheetRow
+            icon="🥷"
+            title="IMPOSTERS"
             onClick={() => {
               if (isOnline && !isHost) {
                 toast.info("Only the Host can edit imposter count");
@@ -315,11 +376,7 @@ export function Lobby() {
       </div>
 
       {sheet === "players" && (
-        <PlayersSheet 
-          onClose={() => setSheet(null)} 
-          isOnline={isOnline} 
-          isHost={isHost} 
-        />
+        <PlayersSheet onClose={() => setSheet(null)} isOnline={isOnline} isHost={isHost} />
       )}
       {sheet === "categories" && <CategoriesSheet onClose={() => setSheet(null)} />}
       {sheet === "imposters" && <ImpostersSheet onClose={() => setSheet(null)} />}
@@ -327,7 +384,15 @@ export function Lobby() {
   );
 }
 
-function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+function Section({
+  icon,
+  title,
+  children,
+}: {
+  icon: string;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl bg-card p-4 card-shadow">
       <div className="mb-3 flex items-center gap-2 text-sm font-bold tracking-wider text-foreground/70">
@@ -339,10 +404,21 @@ function Section({ icon, title, children }: { icon: string; title: string; child
 }
 
 function SheetRow({
-  icon, title, children, onClick,
-}: { icon: string; title: string; children: React.ReactNode; onClick: () => void }) {
+  icon,
+  title,
+  children,
+  onClick,
+}: {
+  icon: string;
+  title: string;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <button onClick={onClick} className="w-full text-left rounded-2xl bg-card p-4 card-shadow active:scale-[0.99] transition">
+    <button
+      onClick={onClick}
+      className="w-full text-left rounded-2xl bg-card p-4 card-shadow active:scale-[0.99] transition"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="mb-1 flex items-center gap-2 text-sm font-bold tracking-wider text-foreground/70">
@@ -357,8 +433,18 @@ function SheetRow({
 }
 
 function ToggleRow({
-  icon, title, subtitle, checked, onChange,
-}: { icon: React.ReactNode; title: string; subtitle: string; checked: boolean; onChange: (v: boolean) => void }) {
+  icon,
+  title,
+  subtitle,
+  checked,
+  onChange,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <div className="rounded-2xl bg-card p-4 card-shadow">
       <div className="flex items-start gap-3">
@@ -383,7 +469,17 @@ function ToggleRow({
   );
 }
 
-function ModeBtn({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+function ModeBtn({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
   return (
     <button
       onClick={onClick}
@@ -404,9 +500,22 @@ function Chip({ children }: { children: React.ReactNode }) {
   );
 }
 
-function BottomSheet({ children, onClose, title, subtitle }: { children: React.ReactNode; onClose: () => void; title: string; subtitle?: string }) {
+function BottomSheet({
+  children,
+  onClose,
+  title,
+  subtitle,
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+}) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 animate-in fade-in" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50 animate-in fade-in"
+      onClick={onClose}
+    >
       <div
         className="mx-auto w-full max-w-md rounded-t-3xl bg-card p-5 pb-6 animate-in slide-in-from-bottom max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -420,7 +529,15 @@ function BottomSheet({ children, onClose, title, subtitle }: { children: React.R
   );
 }
 
-function PlayersSheet({ onClose, isOnline, isHost }: { onClose: () => void; isOnline: boolean; isHost: boolean }) {
+function PlayersSheet({
+  onClose,
+  isOnline,
+  isHost,
+}: {
+  onClose: () => void;
+  isOnline: boolean;
+  isHost: boolean;
+}) {
   const g = useGame();
   const [name, setName] = useState("");
 
@@ -433,33 +550,51 @@ function PlayersSheet({ onClose, isOnline, isHost }: { onClose: () => void; isOn
 
   if (isOnline) {
     return (
-      <BottomSheet title="CONNECTED PLAYERS" subtitle={`${g.onlinePlayers.length} in lobby • Players join via link`} onClose={onClose}>
+      <BottomSheet
+        title="CONNECTED PLAYERS"
+        subtitle={`${g.onlinePlayers.length} in lobby • Players join via link`}
+        onClose={onClose}
+      >
         <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
           {g.onlinePlayers.map((p) => {
             const isMe = p.id === g.localPlayer.id;
             return (
-              <div key={p.id} className="flex items-center justify-between rounded-full bg-background px-5 py-3.5 card-shadow border border-border">
+              <div
+                key={p.id}
+                className="flex items-center justify-between rounded-full bg-background px-5 py-3.5 card-shadow border border-border"
+              >
                 <div className="flex items-center gap-2.5">
                   <span className="text-2xl">{p.avatar}</span>
-                  <span className={`font-bold ${p.connected ? "text-foreground" : "text-muted-foreground/50 line-through"} flex items-center gap-1.5`}>
+                  <span
+                    className={`font-bold ${p.connected ? "text-foreground" : "text-muted-foreground/50 line-through"} flex items-center gap-1.5`}
+                  >
                     {p.name}
                     {isMe && <span className="text-xs text-pink font-extrabold">(YOU)</span>}
                     {p.isHost && <Crown className="h-3.5 w-3.5 text-yellow fill-yellow shrink-0" />}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {p.spectator && <span className="text-[10px] bg-secondary text-muted-foreground font-extrabold px-2 py-0.5 rounded-full uppercase">Spectator</span>}
+                  {p.spectator && (
+                    <span className="text-[10px] bg-secondary text-muted-foreground font-extrabold px-2 py-0.5 rounded-full uppercase">
+                      Spectator
+                    </span>
+                  )}
                   {p.connected ? (
                     <span className="h-2 w-2 rounded-full bg-lime" />
                   ) : (
-                    <span className="text-[10px] text-destructive font-bold uppercase">Offline</span>
+                    <span className="text-[10px] text-destructive font-bold uppercase">
+                      Offline
+                    </span>
                   )}
                 </div>
               </div>
             );
           })}
         </div>
-        <button onClick={onClose} className="mt-5 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background">
+        <button
+          onClick={onClose}
+          className="mt-5 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background"
+        >
           CLOSE
         </button>
       </BottomSheet>
@@ -468,7 +603,11 @@ function PlayersSheet({ onClose, isOnline, isHost }: { onClose: () => void; isOn
 
   // Classic Player Sheet (original)
   return (
-    <BottomSheet title="EDIT PLAYERS" subtitle="3-20 players • Tap a name to edit" onClose={onClose}>
+    <BottomSheet
+      title="EDIT PLAYERS"
+      subtitle="3-20 players • Tap a name to edit"
+      onClose={onClose}
+    >
       <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
         {g.players.map((p, i) => (
           <div key={i} className="flex items-center gap-2">
@@ -500,7 +639,10 @@ function PlayersSheet({ onClose, isOnline, isHost }: { onClose: () => void; isOn
         </button>
       </div>
 
-      <button onClick={onClose} className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background">
+      <button
+        onClick={onClose}
+        className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background"
+      >
         CONFIRM
       </button>
     </BottomSheet>
@@ -510,9 +652,13 @@ function PlayersSheet({ onClose, isOnline, isHost }: { onClose: () => void; isOn
 function CategoriesSheet({ onClose }: { onClose: () => void }) {
   const g = useGame();
   return (
-    <BottomSheet title="SELECT CATEGORIES" subtitle="Choose one or more categories for the game." onClose={onClose}>
+    <BottomSheet
+      title="SELECT CATEGORIES"
+      subtitle="Choose one or more categories for the game."
+      onClose={onClose}
+    >
       <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-        {CATEGORIES.map((c) => {
+        {g.customCategories.map((c) => {
           const selected = g.categories.includes(c.id);
           return (
             <button
@@ -529,7 +675,10 @@ function CategoriesSheet({ onClose }: { onClose: () => void }) {
           );
         })}
       </div>
-      <button onClick={onClose} className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background">
+      <button
+        onClick={onClose}
+        className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background"
+      >
         CONFIRM
       </button>
     </BottomSheet>
@@ -538,9 +687,10 @@ function CategoriesSheet({ onClose }: { onClose: () => void }) {
 
 function ImpostersSheet({ onClose }: { onClose: () => void }) {
   const g = useGame();
-  const playerCount = g.gameMode === "online" 
-    ? g.onlinePlayers.filter(p => p.connected && !p.spectator).length 
-    : g.players.length;
+  const playerCount =
+    g.gameMode === "online"
+      ? g.onlinePlayers.filter((p) => p.connected && !p.spectator).length
+      : g.players.length;
 
   const max = Math.max(1, Math.floor((playerCount - 1) / 3) + 1);
   const options = Array.from({ length: max }, (_, i) => i + 1);
@@ -559,13 +709,18 @@ function ImpostersSheet({ onClose }: { onClose: () => void }) {
               onClick={() => g.setImposterCount(n)}
               className={`w-full flex items-center rounded-2xl px-5 py-4 card-shadow ${sel ? "bg-yellow" : "bg-card"}`}
             >
-              <span className="flex-1 text-left font-bold">{n} Imposter{n > 1 ? "s" : ""}</span>
+              <span className="flex-1 text-left font-bold">
+                {n} Imposter{n > 1 ? "s" : ""}
+              </span>
               {sel && <span className="font-bold">✓</span>}
             </button>
           );
         })}
       </div>
-      <button onClick={onClose} className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background">
+      <button
+        onClick={onClose}
+        className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background"
+      >
         CONFIRM
       </button>
     </BottomSheet>

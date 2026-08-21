@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { CATEGORIES, type WordEntry } from "../data/categories";
+import { CATEGORIES, type WordEntry, type Category } from "../data/categories";
 
 export type Phase = "lobby" | "reveal" | "clue" | "discuss" | "vote" | "result";
 
@@ -49,6 +49,7 @@ export type Room = {
   settings: {
     imposterCount: number;
     categories: string[];
+    customCategories?: Category[];
     timeLimitEnabled: boolean;
     imposterHintEnabled: boolean;
   };
@@ -73,14 +74,14 @@ export type Room = {
 
 // Global in-memory maps
 export const rooms = new Map<string, Room>();
-const clients = new Map<string, Map<string, any>>(); // roomId -> Map<playerId, sseController>
+const clients = new Map<string, Map<string, unknown>>(); // roomId -> Map<playerId, sseController>
 const disconnectTimers = new Map<string, NodeJS.Timeout>(); // playerId -> timer
 
 // Helper to pick random item
-const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const pickRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 // Helper to shuffle array
-const shuffle = <T,>(arr: T[]): T[] => {
+const shuffle = <T>(arr: T[]): T[] => {
   const res = [...arr];
   for (let i = res.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -90,7 +91,7 @@ const shuffle = <T,>(arr: T[]): T[] => {
 };
 
 // Add controller to clients map
-export function addClient(roomId: string, playerId: string, controller: any) {
+export function addClient(roomId: string, playerId: string, controller: unknown) {
   if (!clients.has(roomId)) {
     clients.set(roomId, new Map());
   }
@@ -192,7 +193,10 @@ export function clearDisconnectTimer(playerId: string) {
 }
 
 // Join room
-export function joinRoom(roomId: string, playerIdentity: { id: string; name: string; avatar: string }): Room {
+export function joinRoom(
+  roomId: string,
+  playerIdentity: { id: string; name: string; avatar: string },
+): Room {
   clearDisconnectTimer(playerIdentity.id);
 
   let room = rooms.get(roomId);
@@ -268,8 +272,9 @@ export function startGame(roomId: string, hostId: string) {
 
   // Gather categories pool
   const pool: { entry: WordEntry; cat: string }[] = [];
+  const categoriesList = room.settings.customCategories || CATEGORIES;
   for (const cid of room.settings.categories) {
-    const cat = CATEGORIES.find((c) => c.id === cid);
+    const cat = categoriesList.find((c) => c.id === cid);
     if (!cat) continue;
     for (const e of cat.words) pool.push({ entry: e, cat: cat.name });
   }
@@ -602,7 +607,12 @@ export function exitToLobby(roomId: string, hostId: string) {
 }
 
 // Update player details
-export function updatePlayerIdentity(roomId: string, playerId: string, name: string, avatar: string) {
+export function updatePlayerIdentity(
+  roomId: string,
+  playerId: string,
+  name: string,
+  avatar: string,
+) {
   const room = rooms.get(roomId);
   if (!room) return;
 
@@ -620,9 +630,10 @@ export function updateSettings(
   settings: {
     imposterCount: number;
     categories: string[];
+    customCategories?: Category[];
     timeLimitEnabled: boolean;
     imposterHintEnabled: boolean;
-  }
+  },
 ) {
   const room = rooms.get(roomId);
   if (!room || room.hostId !== hostId || room.phase !== "lobby") return;

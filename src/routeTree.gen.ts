@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WordBoxRouteImport } from './routes/word-box'
 import { Route as ApiActionRouteImport } from './routes/api/action'
 import { Route as ApiEventsRouteImport } from './routes/api/events'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -17,6 +18,11 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WordBoxRoute = WordBoxRouteImport.update({
+  id: '/word-box',
+  path: '/word-box',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiActionRoute = ApiActionRouteImport.update({
@@ -37,12 +43,14 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/word-box': typeof WordBoxRoute
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/word-box': typeof WordBoxRoute
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
@@ -50,20 +58,28 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/word-box': typeof WordBoxRoute
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/action' | '/api/events' | '/api/health'
+  fullPaths: '/' | '/word-box' | '/api/action' | '/api/events' | '/api/health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/action' | '/api/events' | '/api/health'
-  id: '__root__' | '/' | '/api/action' | '/api/events' | '/api/health'
+  to: '/' | '/word-box' | '/api/action' | '/api/events' | '/api/health'
+  id:
+    | '__root__'
+    | '/'
+    | '/word-box'
+    | '/api/action'
+    | '/api/events'
+    | '/api/health'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  WordBoxRoute: typeof WordBoxRoute
   ApiActionRoute: typeof ApiActionRoute
   ApiEventsRoute: typeof ApiEventsRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -76,6 +92,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/word-box': {
+      id: '/word-box'
+      path: '/word-box'
+      fullPath: '/word-box'
+      preLoaderRoute: typeof WordBoxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/action': {
@@ -104,6 +127,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  WordBoxRoute: WordBoxRoute,
   ApiActionRoute: ApiActionRoute,
   ApiEventsRoute: ApiEventsRoute,
   ApiHealthRoute: ApiHealthRoute,

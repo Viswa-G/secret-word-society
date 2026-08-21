@@ -12,7 +12,7 @@ import {
   newGame,
   exitToLobby,
   updatePlayerIdentity,
-  updateSettings
+  updateSettings,
 } from "../../lib/server-state";
 
 export const Route = createFileRoute("/api/action")({
@@ -75,9 +75,10 @@ export const Route = createFileRoute("/api/action")({
 
           broadcastRoomState(roomId);
           return new Response("ok", { status: 200 });
-        } catch (err: any) {
+        } catch (err) {
           console.error("Action error:", err);
-          return new Response(err.message || "Internal error", { status: 500 });
+          const error = err as Error;
+          return new Response(error.message || "Internal error", { status: 500 });
         }
       },
     },

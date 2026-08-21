@@ -1,7 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
 import { Lobby } from "@/components/game/Lobby";
-import { RevealScreen, DiscussScreen, ResultScreen, ClueScreen, VoteScreen } from "@/components/game/GameScreens";
+import {
+  RevealScreen,
+  DiscussScreen,
+  ResultScreen,
+  ClueScreen,
+  VoteScreen,
+} from "@/components/game/GameScreens";
 import { Toaster } from "@/components/ui/sonner";
 import { useEffect, useState } from "react";
 

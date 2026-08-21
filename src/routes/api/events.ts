@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { addClient, handlePlayerDisconnect, joinRoom, broadcastRoomState } from "../../lib/server-state";
+import {
+  addClient,
+  handlePlayerDisconnect,
+  joinRoom,
+  broadcastRoomState,
+} from "../../lib/server-state";
 
 export const Route = createFileRoute("/api/events")({
   server: {
@@ -55,7 +60,7 @@ export const Route = createFileRoute("/api/events")({
           headers: {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
+            Connection: "keep-alive",
             "X-Accel-Buffering": "no",
           },
         });

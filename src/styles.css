@@ -70,7 +70,9 @@
   * {
     border-color: var(--color-border);
   }
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
   }
   body {
@@ -78,19 +80,27 @@
     color: var(--color-foreground);
     font-family: var(--font-body);
   }
-  h1, h2, h3, h4, .font-display {
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
   }
 }
 
 @utility card-shadow {
-  box-shadow: 0 2px 0 0 rgb(0 0 0 / 0.06), 0 8px 24px -8px rgb(0 0 0 / 0.08);
+  box-shadow:
+    0 2px 0 0 rgb(0 0 0 / 0.06),
+    0 8px 24px -8px rgb(0 0 0 / 0.08);
 }
 
 @utility btn-3d {
   box-shadow: 0 4px 0 0 rgb(0 0 0 / 0.15);
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
 }
 @utility btn-3d-press {
   transform: translateY(2px);
@@ -99,6 +109,10 @@
 
 @utility card-ray-bg {
   background:
-    radial-gradient(circle at 50% 100%, rgba(255,255,255,0.35) 0%, transparent 40%),
-    repeating-conic-gradient(from 210deg at 50% 100%, rgba(255,255,255,0.15) 0deg 12deg, transparent 12deg 24deg);
+    radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.35) 0%, transparent 40%),
+    repeating-conic-gradient(
+      from 210deg at 50% 100%,
+      rgba(255, 255, 255, 0.15) 0deg 12deg,
+      transparent 12deg 24deg
+    );
 }
