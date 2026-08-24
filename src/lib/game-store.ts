@@ -75,6 +75,7 @@ type GameState = {
       [round: number]: string;
     };
   };
+  onlineCustomCategories: Category[];
 
   // Actions
   setGameMode: (m: "classic" | "online") => void;
@@ -207,6 +208,7 @@ export const useGame = create<GameState>()(
       currentTurnIndex: 0,
       currentRound: 1,
       clues: {},
+      onlineCustomCategories: [],
 
       setGameMode: (m) => {
         set({ gameMode: m });
@@ -243,6 +245,8 @@ export const useGame = create<GameState>()(
           nextCategories = [...cur, id];
         }
 
+        set({ categories: nextCategories });
+
         if (get().gameMode === "online" && get().roomId) {
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: get().imposterCount,
@@ -251,8 +255,6 @@ export const useGame = create<GameState>()(
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
           });
-        } else {
-          set({ categories: nextCategories });
         }
       },
       setCustomCategories: (cats) => {
@@ -280,6 +282,7 @@ export const useGame = create<GameState>()(
         }
       },
       setImposterCount: (n) => {
+        set({ imposterCount: n });
         if (get().gameMode === "online" && get().roomId) {
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: n,
@@ -288,11 +291,10 @@ export const useGame = create<GameState>()(
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
           });
-        } else {
-          set({ imposterCount: n });
         }
       },
       setTimeLimitEnabled: (b) => {
+        set({ timeLimitEnabled: b });
         if (get().gameMode === "online" && get().roomId) {
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: get().imposterCount,
@@ -301,11 +303,10 @@ export const useGame = create<GameState>()(
             timeLimitEnabled: b,
             imposterHintEnabled: get().imposterHintEnabled,
           });
-        } else {
-          set({ timeLimitEnabled: b });
         }
       },
       setImposterHintEnabled: (b) => {
+        set({ imposterHintEnabled: b });
         if (get().gameMode === "online" && get().roomId) {
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: get().imposterCount,
@@ -314,8 +315,6 @@ export const useGame = create<GameState>()(
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: b,
           });
-        } else {
-          set({ imposterHintEnabled: b });
         }
       },
 
@@ -452,9 +451,42 @@ export const useGame = create<GameState>()(
 
             // Check if local player is ready
             const meObj = data.players.find(
-              (p: { id: string; ready: boolean }) => p.id === localPlayer.id,
+              (p: { id: string; ready: boolean; isHost: boolean }) => p.id === localPlayer.id,
             );
             const myReadyState = meObj ? meObj.ready : false;
+            const isLocalHost = meObj ? meObj.isHost : (data.hostId === localPlayer.id);
+
+            const localSettings = {
+              imposterCount: get().imposterCount,
+              categories: get().categories,
+              customCategories: get().customCategories,
+              timeLimitEnabled: get().timeLimitEnabled,
+              imposterHintEnabled: get().imposterHintEnabled,
+            };
+
+            const serverSettings = data.settings;
+
+            // Check if settings are equal
+            const isSettingsEqual =
+              serverSettings.imposterCount === localSettings.imposterCount &&
+              serverSettings.timeLimitEnabled === localSettings.timeLimitEnabled &&
+              serverSettings.imposterHintEnabled === localSettings.imposterHintEnabled &&
+              JSON.stringify(serverSettings.categories) === JSON.stringify(localSettings.categories) &&
+              JSON.stringify(serverSettings.customCategories || []) === JSON.stringify(localSettings.customCategories || []);
+
+            if (isLocalHost && !isSettingsEqual && data.phase === "lobby") {
+              // Upload host's local settings to the server
+              sendAction(roomId, localPlayer.id, "updateSettings", localSettings);
+            }
+
+            const settingsToUpdate = isLocalHost
+              ? {}
+              : {
+                  imposterCount: data.settings.imposterCount,
+                  categories: data.settings.categories,
+                  timeLimitEnabled: data.settings.timeLimitEnabled,
+                  imposterHintEnabled: data.settings.imposterHintEnabled,
+                };
 
             set({
               phase: data.phase,
@@ -463,12 +495,6 @@ export const useGame = create<GameState>()(
               assignments: mappedAssignments,
               currentPlayerIndex: myIndex !== -1 ? myIndex : 0,
               cardViewed: myReadyState, // hijack cardViewed to track if local player is ready in reveal phase
-
-              // Settings Sync
-              imposterCount: data.settings.imposterCount,
-              categories: data.settings.categories,
-              timeLimitEnabled: data.settings.timeLimitEnabled,
-              imposterHintEnabled: data.settings.imposterHintEnabled,
 
               // Detailed online state
               onlinePlayers: data.players,
@@ -480,6 +506,9 @@ export const useGame = create<GameState>()(
               currentTurnIndex: data.currentTurnIndex,
               currentRound: data.currentRound,
               clues: data.clues,
+              onlineCustomCategories: data.settings.customCategories || [],
+
+              ...settingsToUpdate
             });
           } catch (e) {
             console.error("Failed to parse SSE payload", e);
@@ -504,6 +533,7 @@ export const useGame = create<GameState>()(
           votingHistory: [],
           turnOrder: [],
           clues: {},
+          onlineCustomCategories: [],
         });
       },
 
@@ -562,6 +592,7 @@ export const useGame = create<GameState>()(
         gameMode: state.gameMode,
         players: state.players,
         categories: state.categories,
+        customCategories: state.customCategories,
         imposterCount: state.imposterCount,
         timeLimitEnabled: state.timeLimitEnabled,
         imposterHintEnabled: state.imposterHintEnabled,

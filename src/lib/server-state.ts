@@ -125,7 +125,7 @@ export function broadcastRoomState(roomId: string) {
 
   for (const [playerId, controller] of roomClients.entries()) {
     try {
-      controller.enqueue(bytes);
+      (controller as any).enqueue(bytes);
     } catch (err) {
       console.error(`Failed to send state to player ${playerId} in room ${roomId}`, err);
     }

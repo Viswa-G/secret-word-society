@@ -290,7 +290,12 @@ export function Lobby() {
           >
             <div className="mt-1 flex flex-wrap gap-2">
               {g.categories.map((cid) => {
-                const c = g.customCategories.find((x) => x.id === cid);
+                const categoriesList = isOnline
+                  ? g.onlineCustomCategories.length > 0
+                    ? g.onlineCustomCategories
+                    : g.customCategories
+                  : g.customCategories;
+                const c = categoriesList.find((x) => x.id === cid);
                 if (!c) return null;
                 return (
                   <Chip key={cid}>
