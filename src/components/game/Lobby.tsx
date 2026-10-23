@@ -15,6 +15,10 @@ import {
   X,
   Plus,
   Box,
+  Shield,
+  Zap,
+  Vote,
+  Sparkles,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
@@ -353,6 +357,65 @@ export function Lobby() {
               g.setImposterHintEnabled(b);
             }}
           />
+
+          {/* Special Roles Section */}
+          <div className="pt-2">
+            <div className="mb-2 flex items-center justify-between px-1">
+              <span className="font-display text-xs font-extrabold tracking-wider text-muted-foreground uppercase flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-pink" /> SPECIAL ROLES
+              </span>
+              <span className="text-[10px] font-bold text-muted-foreground/70 bg-secondary/80 px-2 py-0.5 rounded-full">
+                Independent Toggles
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {/* Evil Guardian */}
+              <ToggleRow
+                icon={<Shield className="h-5 w-5 text-lime" />}
+                title="THE EVIL GUARDIAN ️🛡️"
+                subtitle="Crewmate only. Sees an impostor's clue and defends them during discussion so others don't vote them out."
+                checked={g.evilGuardianEnabled}
+                onChange={(b) => {
+                  if (isOnline && !isHost) {
+                    toast.info("Only the Host can change this option");
+                    return;
+                  }
+                  g.setEvilGuardianEnabled(b);
+                }}
+              />
+
+              {/* The Initiator */}
+              <ToggleRow
+                icon={<Zap className="h-5 w-5 text-yellow" />}
+                title="THE INITIATOR ⚡"
+                subtitle="Crewmate or Impostor. Revealed after cards are viewed; chooses which player speaks first."
+                checked={g.initiatorEnabled}
+                onChange={(b) => {
+                  if (isOnline && !isHost) {
+                    toast.info("Only the Host can change this option");
+                    return;
+                  }
+                  g.setInitiatorEnabled(b);
+                }}
+              />
+
+              {/* The Extra Voter */}
+              <ToggleRow
+                icon={<Vote className="h-5 w-5 text-pink" />}
+                title="THE EXTRA VOTER 🗳️"
+                subtitle="Crewmate or Impostor. Gets an extra vote during voting (for the same or different player)."
+                checked={g.extraVoterEnabled}
+                onChange={(b) => {
+                  if (isOnline && !isHost) {
+                    toast.info("Only the Host can change this option");
+                    return;
+                  }
+                  g.setExtraVoterEnabled(b);
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

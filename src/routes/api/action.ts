@@ -13,6 +13,8 @@ import {
   exitToLobby,
   updatePlayerIdentity,
   updateSettings,
+  proceedFromInitiator,
+  revealRolesFromInitiator,
 } from "../../lib/server-state";
 
 export const Route = createFileRoute("/api/action")({
@@ -48,6 +50,12 @@ export const Route = createFileRoute("/api/action")({
             case "markReady":
               markReady(roomId, playerId);
               break;
+            case "proceedFromInitiator":
+              proceedFromInitiator(roomId, playerId);
+              break;
+            case "revealRolesFromInitiator":
+              revealRolesFromInitiator(roomId, playerId);
+              break;
             case "submitClue":
               submitClue(roomId, playerId, data.round, data.text);
               break;
@@ -58,7 +66,7 @@ export const Route = createFileRoute("/api/action")({
               markReadyToVote(roomId, playerId);
               break;
             case "submitVote":
-              submitVote(roomId, playerId, data.targetId);
+              submitVote(roomId, playerId, data.targetId, data.extraTargetId);
               break;
             case "sendChat":
               sendChat(roomId, playerId, data.text);

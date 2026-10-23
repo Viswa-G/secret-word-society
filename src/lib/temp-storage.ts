@@ -108,7 +108,10 @@ export function clearTempStorage(): void {
  * Marks the chosen word as used.
  * If all pool words are used, resets used words for those categories to prevent running out.
  */
-export function selectAndMarkWord(pool: { entry: WordEntry; cat: string }[]): { entry: WordEntry; cat: string } {
+export function selectAndMarkWord(pool: { entry: WordEntry; cat: string }[]): {
+  entry: WordEntry;
+  cat: string;
+} {
   const storage = getTempStorage();
   const usedSet = new Set(storage.usedWords || []);
 

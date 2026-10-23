@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto";
 import { CATEGORIES, type WordEntry, type Category } from "../data/categories";
 import { selectAndMarkWord, selectImposters } from "./temp-storage";
+import { type SpecialRole, assignSpecialRoles, SPECIAL_ROLES_INFO } from "./special-roles";
 
-export type Phase = "lobby" | "reveal" | "clue" | "discuss" | "vote" | "result";
+export type Phase = "lobby" | "reveal" | "initiator" | "clue" | "discuss" | "vote" | "result";
 
 export type Player = {
   id: string;
@@ -14,6 +15,7 @@ export type Player = {
   spectator: boolean;
   eliminated: boolean;
   votedFor?: string;
+  extraVotedFor?: string;
   joinedAt: number;
 };
 
@@ -30,11 +32,14 @@ export type Assignment = {
   playerId: string;
   isImposter: boolean;
   clue?: string;
+  specialRole?: SpecialRole | null;
+  evilGuardianClue?: string;
 };
 
 export type VoteRecord = {
   voterId: string;
   targetId: string;
+  isExtraVote?: boolean;
 };
 
 export type VotingRoundHistory = {
@@ -53,6 +58,9 @@ export type Room = {
     customCategories?: Category[];
     timeLimitEnabled: boolean;
     imposterHintEnabled: boolean;
+    evilGuardianEnabled: boolean;
+    initiatorEnabled: boolean;
+    extraVoterEnabled: boolean;
   };
   players: Player[];
   phase: Phase;
@@ -75,7 +83,7 @@ export type Room = {
 
 // Global in-memory maps
 export const rooms = new Map<string, Room>();
-const clients = new Map<string, Map<string, unknown>>(); // roomId -> Map<playerId, sseController>
+const clients = new Map<string, Map<string, ReadableStreamDefaultController<Uint8Array>>>(); // roomId -> Map<playerId, sseController>
 const disconnectTimers = new Map<string, NodeJS.Timeout>(); // playerId -> timer
 
 // Helper to pick random item
@@ -92,7 +100,11 @@ const shuffle = <T>(arr: T[]): T[] => {
 };
 
 // Add controller to clients map
-export function addClient(roomId: string, playerId: string, controller: unknown) {
+export function addClient(
+  roomId: string,
+  playerId: string,
+  controller: ReadableStreamDefaultController<Uint8Array>,
+) {
   if (!clients.has(roomId)) {
     clients.set(roomId, new Map());
   }
@@ -125,7 +137,7 @@ export function broadcastRoomState(roomId: string) {
 
   for (const [playerId, controller] of roomClients.entries()) {
     try {
-      (controller as any).enqueue(bytes);
+      controller.enqueue(bytes);
     } catch (err) {
       console.error(`Failed to send state to player ${playerId} in room ${roomId}`, err);
     }
@@ -211,6 +223,9 @@ export function joinRoom(
         categories: ["everyday", "foods"],
         timeLimitEnabled: false,
         imposterHintEnabled: true,
+        evilGuardianEnabled: true,
+        initiatorEnabled: true,
+        extraVoterEnabled: true,
       },
       players: [],
       phase: "lobby",
@@ -307,6 +322,22 @@ export function startGame(roomId: string, hostId: string) {
     };
   });
 
+  // Assign special roles based on settings
+  const specialRoleAssignments = assignSpecialRoles(
+    assignments.map((a) => ({ isImposter: a.isImposter, clue: a.clue })),
+    {
+      evilGuardianEnabled: room.settings.evilGuardianEnabled ?? true,
+      initiatorEnabled: room.settings.initiatorEnabled ?? true,
+      extraVoterEnabled: room.settings.extraVoterEnabled ?? true,
+      availableClues: clueHints,
+    },
+  );
+
+  assignments.forEach((a, i) => {
+    a.specialRole = specialRoleAssignments[i].specialRole;
+    a.evilGuardianClue = specialRoleAssignments[i].evilGuardianClue;
+  });
+
   // Set game state
   room.phase = "reveal";
   room.word = word;
@@ -325,6 +356,7 @@ export function startGame(roomId: string, hostId: string) {
     p.ready = false;
     p.eliminated = false;
     delete p.votedFor;
+    delete p.extraVotedFor;
     // Lock non-spectators into the game, reset spectators
     if (p.spectator) {
       // Spectators stay spectators for this round
@@ -352,13 +384,41 @@ export function markReady(roomId: string, playerId: string) {
   const allReady = activePlayers.every((p) => p.ready);
 
   if (allReady) {
-    room.phase = "clue";
-    room.currentTurnIndex = 0;
-    room.currentRound = 1;
+    const hasInitiator =
+      (room.settings.initiatorEnabled ?? true) &&
+      room.assignments.some((a) => a.specialRole === "initiator");
+    if (hasInitiator) {
+      room.phase = "initiator";
+    } else {
+      room.phase = "clue";
+      room.currentTurnIndex = 0;
+      room.currentRound = 1;
+    }
     for (const p of room.players) {
       p.ready = false;
     }
   }
+}
+
+// Proceed from Initiator screen to clues (Online mode)
+export function proceedFromInitiator(roomId: string, hostId: string) {
+  const room = rooms.get(roomId);
+  if (!room || room.hostId !== hostId || room.phase !== "initiator") return;
+
+  room.phase = "clue";
+  room.currentTurnIndex = 0;
+  room.currentRound = 1;
+  for (const p of room.players) {
+    p.ready = false;
+  }
+}
+
+// Reveal roles directly from Initiator screen
+export function revealRolesFromInitiator(roomId: string, hostId: string) {
+  const room = rooms.get(roomId);
+  if (!room || room.hostId !== hostId || room.phase !== "initiator") return;
+
+  room.phase = "result";
 }
 
 // Submit Clue
@@ -445,21 +505,41 @@ export function markReadyToVote(roomId: string, playerId: string) {
 }
 
 // Submit Vote
-export function submitVote(roomId: string, voterId: string, targetId: string) {
+export function submitVote(
+  roomId: string,
+  voterId: string,
+  targetId: string,
+  extraTargetId?: string,
+) {
   const room = rooms.get(roomId);
   if (!room || room.phase !== "vote") return;
 
   const voter = room.players.find((p) => p.id === voterId);
   if (!voter || voter.spectator || voter.eliminated) return;
 
-  // Idempotency: verify not voted yet
-  if (voter.votedFor) return;
+  const voterAssignment = room.assignments.find((a) => a.playerId === voterId);
+  const isExtraVoter = voterAssignment?.specialRole === "extra_voter";
 
-  voter.votedFor = targetId;
+  if (isExtraVoter) {
+    // If voter already submitted both
+    if (voter.votedFor && voter.extraVotedFor) return;
+    voter.votedFor = targetId;
+    voter.extraVotedFor = extraTargetId || targetId;
+  } else {
+    // Idempotency: verify not voted yet
+    if (voter.votedFor) return;
+    voter.votedFor = targetId;
+  }
 
   // Check if all active non-eliminated players have voted
   const votingPlayers = room.players.filter((p) => p.connected && !p.spectator && !p.eliminated);
-  const allVoted = votingPlayers.every((p) => p.votedFor);
+  const allVoted = votingPlayers.every((p) => {
+    const asg = room.assignments.find((a) => a.playerId === p.id);
+    if (asg?.specialRole === "extra_voter") {
+      return !!p.votedFor && !!p.extraVotedFor;
+    }
+    return !!p.votedFor;
+  });
 
   if (allVoted) {
     // Process results
@@ -467,6 +547,9 @@ export function submitVote(roomId: string, voterId: string, targetId: string) {
     for (const p of votingPlayers) {
       if (p.votedFor) {
         voteCounts[p.votedFor] = (voteCounts[p.votedFor] || 0) + 1;
+      }
+      if (p.extraVotedFor) {
+        voteCounts[p.extraVotedFor] = (voteCounts[p.extraVotedFor] || 0) + 1;
       }
     }
 
@@ -487,9 +570,8 @@ export function submitVote(roomId: string, voterId: string, targetId: string) {
       }
     }
 
-    // Break tie: if tie, choose first lexicographically or random, let's pick the first candidate who got that vote count
+    // Break tie: if tie, choose first candidate who got that vote count
     if (tie && maxVotes > 0) {
-      // Find all candidates with max votes
       const tiedCandidates = candidates.filter((c) => (voteCounts[c.id] || 0) === maxVotes);
       eliminatedId = tiedCandidates[0].id;
     }
@@ -507,10 +589,22 @@ export function submitVote(roomId: string, voterId: string, targetId: string) {
     }
 
     // Record voting history
-    const votesList: VoteRecord[] = votingPlayers.map((p) => ({
-      voterId: p.id,
-      targetId: p.votedFor!,
-    }));
+    const votesList: VoteRecord[] = [];
+    for (const p of votingPlayers) {
+      if (p.votedFor) {
+        votesList.push({
+          voterId: p.id,
+          targetId: p.votedFor,
+        });
+      }
+      if (p.extraVotedFor) {
+        votesList.push({
+          voterId: p.id,
+          targetId: p.extraVotedFor,
+          isExtraVote: true,
+        });
+      }
+    }
 
     room.votingHistory.push({
       voteIndex: room.currentVoteIndex,
@@ -541,6 +635,7 @@ export function submitVote(roomId: string, voterId: string, targetId: string) {
       room.currentVoteIndex++;
       for (const p of room.players) {
         delete p.votedFor;
+        delete p.extraVotedFor;
       }
     }
   }
@@ -603,6 +698,7 @@ export function exitToLobby(roomId: string, hostId: string) {
     p.eliminated = false;
     p.spectator = false; // Convert spectators back to players
     delete p.votedFor;
+    delete p.extraVotedFor;
   }
 }
 
@@ -633,10 +729,19 @@ export function updateSettings(
     customCategories?: Category[];
     timeLimitEnabled: boolean;
     imposterHintEnabled: boolean;
+    evilGuardianEnabled?: boolean;
+    initiatorEnabled?: boolean;
+    extraVoterEnabled?: boolean;
   },
 ) {
   const room = rooms.get(roomId);
   if (!room || room.hostId !== hostId || room.phase !== "lobby") return;
 
-  room.settings = settings;
+  room.settings = {
+    ...room.settings,
+    ...settings,
+    evilGuardianEnabled: settings.evilGuardianEnabled ?? room.settings.evilGuardianEnabled ?? true,
+    initiatorEnabled: settings.initiatorEnabled ?? room.settings.initiatorEnabled ?? true,
+    extraVoterEnabled: settings.extraVoterEnabled ?? room.settings.extraVoterEnabled ?? true,
+  };
 }

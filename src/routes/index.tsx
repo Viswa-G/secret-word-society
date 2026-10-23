@@ -3,6 +3,7 @@ import { useGame } from "@/lib/game-store";
 import { Lobby } from "@/components/game/Lobby";
 import {
   RevealScreen,
+  InitiatorScreen,
   DiscussScreen,
   ResultScreen,
   ClueScreen,
@@ -38,6 +39,8 @@ function Index() {
         <Lobby />
       ) : phase === "reveal" ? (
         <RevealScreen />
+      ) : phase === "initiator" ? (
+        <InitiatorScreen />
       ) : phase === "clue" ? (
         <ClueScreen />
       ) : phase === "discuss" ? (

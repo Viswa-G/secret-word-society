@@ -2,14 +2,17 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { CATEGORIES, type WordEntry, type Category } from "@/data/categories";
 import { selectAndMarkWord, selectImposters } from "@/lib/temp-storage";
+import { type SpecialRole, assignSpecialRoles, SPECIAL_ROLES_INFO } from "@/lib/special-roles";
 
-export type Phase = "lobby" | "reveal" | "clue" | "discuss" | "vote" | "result";
+export type Phase = "lobby" | "reveal" | "initiator" | "clue" | "discuss" | "vote" | "result";
 
 export type Assignment = {
   playerName: string;
   isImposter: boolean;
   clue?: string;
   playerId?: string; // added to identify assignments in online mode
+  specialRole?: SpecialRole | null;
+  evilGuardianClue?: string;
 };
 
 export type Player = {
@@ -22,6 +25,7 @@ export type Player = {
   spectator: boolean;
   eliminated: boolean;
   votedFor?: string;
+  extraVotedFor?: string;
   joinedAt: number;
 };
 
@@ -36,7 +40,7 @@ export type ChatMessage = {
 
 export type VotingRoundHistory = {
   voteIndex: number;
-  votes: { voterId: string; targetId: string }[];
+  votes: { voterId: string; targetId: string; isExtraVote?: boolean }[];
   eliminatedPlayerId: string | null;
   wasImposter: boolean;
 };
@@ -50,6 +54,9 @@ type GameState = {
   imposterCount: number;
   timeLimitEnabled: boolean;
   imposterHintEnabled: boolean;
+  evilGuardianEnabled: boolean;
+  initiatorEnabled: boolean;
+  extraVoterEnabled: boolean;
 
   // Round / Status
   phase: Phase;
@@ -90,6 +97,9 @@ type GameState = {
   setImposterCount: (n: number) => void;
   setTimeLimitEnabled: (b: boolean) => void;
   setImposterHintEnabled: (b: boolean) => void;
+  setEvilGuardianEnabled: (b: boolean) => void;
+  setInitiatorEnabled: (b: boolean) => void;
+  setExtraVoterEnabled: (b: boolean) => void;
 
   startGame: () => void;
   markViewed: () => void;
@@ -106,9 +116,11 @@ type GameState = {
   sendChatMessage: (text: string) => void;
   submitClueAction: (round: number, text: string) => void;
   skipTurnAction: () => void;
-  submitVoteAction: (targetId: string) => void;
+  submitVoteAction: (targetId: string, extraTargetId?: string) => void;
   markReadyAction: () => void;
   markReadyToVoteAction: () => void;
+  proceedFromInitiatorAction: () => void;
+  revealRolesFromInitiatorAction: () => void;
 };
 
 const AVATARS = [
@@ -188,6 +200,9 @@ export const useGame = create<GameState>()(
       imposterCount: 1,
       timeLimitEnabled: false,
       imposterHintEnabled: true,
+      evilGuardianEnabled: true,
+      initiatorEnabled: true,
+      extraVoterEnabled: true,
 
       phase: "lobby",
       word: null,
@@ -278,6 +293,9 @@ export const useGame = create<GameState>()(
             customCategories: CATEGORIES,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
+            evilGuardianEnabled: get().evilGuardianEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
           });
         }
       },
@@ -290,6 +308,9 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
+            evilGuardianEnabled: get().evilGuardianEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
           });
         }
       },
@@ -302,6 +323,9 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: b,
             imposterHintEnabled: get().imposterHintEnabled,
+            evilGuardianEnabled: get().evilGuardianEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
           });
         }
       },
@@ -314,6 +338,54 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: b,
+            evilGuardianEnabled: get().evilGuardianEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
+          });
+        }
+      },
+      setEvilGuardianEnabled: (b) => {
+        set({ evilGuardianEnabled: b });
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
+            imposterCount: get().imposterCount,
+            categories: get().categories,
+            customCategories: get().customCategories,
+            timeLimitEnabled: get().timeLimitEnabled,
+            imposterHintEnabled: get().imposterHintEnabled,
+            evilGuardianEnabled: b,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
+          });
+        }
+      },
+      setInitiatorEnabled: (b) => {
+        set({ initiatorEnabled: b });
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
+            imposterCount: get().imposterCount,
+            categories: get().categories,
+            customCategories: get().customCategories,
+            timeLimitEnabled: get().timeLimitEnabled,
+            imposterHintEnabled: get().imposterHintEnabled,
+            evilGuardianEnabled: get().evilGuardianEnabled,
+            initiatorEnabled: b,
+            extraVoterEnabled: get().extraVoterEnabled,
+          });
+        }
+      },
+      setExtraVoterEnabled: (b) => {
+        set({ extraVoterEnabled: b });
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
+            imposterCount: get().imposterCount,
+            categories: get().categories,
+            customCategories: get().customCategories,
+            timeLimitEnabled: get().timeLimitEnabled,
+            imposterHintEnabled: get().imposterHintEnabled,
+            evilGuardianEnabled: get().evilGuardianEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: b,
           });
         }
       },
@@ -360,6 +432,22 @@ export const useGame = create<GameState>()(
           };
         });
 
+        // Assign special roles based on settings
+        const specialRoleAssignments = assignSpecialRoles(
+          assignments.map((a) => ({ isImposter: a.isImposter, clue: a.clue })),
+          {
+            evilGuardianEnabled: get().evilGuardianEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
+            availableClues: clues,
+          },
+        );
+
+        assignments.forEach((a, i) => {
+          a.specialRole = specialRoleAssignments[i].specialRole;
+          a.evilGuardianClue = specialRoleAssignments[i].evilGuardianClue;
+        });
+
         set({
           phase: "reveal",
           word,
@@ -371,10 +459,16 @@ export const useGame = create<GameState>()(
       },
       markViewed: () => set({ cardViewed: true }),
       nextPlayer: () => {
-        const { currentPlayerIndex, assignments } = get();
+        const { currentPlayerIndex, assignments, initiatorEnabled } = get();
         if (!get().cardViewed) return;
         if (currentPlayerIndex + 1 >= assignments.length) {
-          set({ phase: "discuss" });
+          const hasInitiator =
+            initiatorEnabled && assignments.some((a) => a.specialRole === "initiator");
+          if (hasInitiator) {
+            set({ phase: "initiator" });
+          } else {
+            set({ phase: "discuss" });
+          }
         } else {
           set({ currentPlayerIndex: currentPlayerIndex + 1, cardViewed: false });
         }
@@ -430,7 +524,13 @@ export const useGame = create<GameState>()(
           try {
             const data = JSON.parse(event.data);
             const mappedAssignments: Assignment[] = data.assignments.map(
-              (as: { playerId: string; isImposter: boolean; clue?: string }) => {
+              (as: {
+                playerId: string;
+                isImposter: boolean;
+                clue?: string;
+                specialRole?: SpecialRole | null;
+                evilGuardianClue?: string;
+              }) => {
                 const p = data.players.find(
                   (pl: { id: string; name: string }) => pl.id === as.playerId,
                 );
@@ -439,6 +539,8 @@ export const useGame = create<GameState>()(
                   playerName: p ? p.name : "Unknown",
                   isImposter: as.isImposter,
                   clue: as.clue,
+                  specialRole: as.specialRole,
+                  evilGuardianClue: as.evilGuardianClue,
                 };
               },
             );
@@ -454,7 +556,7 @@ export const useGame = create<GameState>()(
               (p: { id: string; ready: boolean; isHost: boolean }) => p.id === localPlayer.id,
             );
             const myReadyState = meObj ? meObj.ready : false;
-            const isLocalHost = meObj ? meObj.isHost : (data.hostId === localPlayer.id);
+            const isLocalHost = meObj ? meObj.isHost : data.hostId === localPlayer.id;
 
             const localSettings = {
               imposterCount: get().imposterCount,
@@ -462,6 +564,9 @@ export const useGame = create<GameState>()(
               customCategories: get().customCategories,
               timeLimitEnabled: get().timeLimitEnabled,
               imposterHintEnabled: get().imposterHintEnabled,
+              evilGuardianEnabled: get().evilGuardianEnabled,
+              initiatorEnabled: get().initiatorEnabled,
+              extraVoterEnabled: get().extraVoterEnabled,
             };
 
             const serverSettings = data.settings;
@@ -471,8 +576,13 @@ export const useGame = create<GameState>()(
               serverSettings.imposterCount === localSettings.imposterCount &&
               serverSettings.timeLimitEnabled === localSettings.timeLimitEnabled &&
               serverSettings.imposterHintEnabled === localSettings.imposterHintEnabled &&
-              JSON.stringify(serverSettings.categories) === JSON.stringify(localSettings.categories) &&
-              JSON.stringify(serverSettings.customCategories || []) === JSON.stringify(localSettings.customCategories || []);
+              (serverSettings.evilGuardianEnabled ?? true) === localSettings.evilGuardianEnabled &&
+              (serverSettings.initiatorEnabled ?? true) === localSettings.initiatorEnabled &&
+              (serverSettings.extraVoterEnabled ?? true) === localSettings.extraVoterEnabled &&
+              JSON.stringify(serverSettings.categories) ===
+                JSON.stringify(localSettings.categories) &&
+              JSON.stringify(serverSettings.customCategories || []) ===
+                JSON.stringify(localSettings.customCategories || []);
 
             if (isLocalHost && !isSettingsEqual && data.phase === "lobby") {
               // Upload host's local settings to the server
@@ -486,6 +596,9 @@ export const useGame = create<GameState>()(
                   categories: data.settings.categories,
                   timeLimitEnabled: data.settings.timeLimitEnabled,
                   imposterHintEnabled: data.settings.imposterHintEnabled,
+                  evilGuardianEnabled: data.settings.evilGuardianEnabled ?? true,
+                  initiatorEnabled: data.settings.initiatorEnabled ?? true,
+                  extraVoterEnabled: data.settings.extraVoterEnabled ?? true,
                 };
 
             set({
@@ -508,7 +621,7 @@ export const useGame = create<GameState>()(
               clues: data.clues,
               onlineCustomCategories: data.settings.customCategories || [],
 
-              ...settingsToUpdate
+              ...settingsToUpdate,
             });
           } catch (e) {
             console.error("Failed to parse SSE payload", e);
@@ -568,9 +681,12 @@ export const useGame = create<GameState>()(
         }
       },
 
-      submitVoteAction: (targetId) => {
+      submitVoteAction: (targetId, extraTargetId) => {
         if (get().gameMode === "online" && get().roomId) {
-          sendAction(get().roomId!, get().localPlayer.id, "submitVote", { targetId });
+          sendAction(get().roomId!, get().localPlayer.id, "submitVote", {
+            targetId,
+            extraTargetId,
+          });
         }
       },
 
@@ -585,6 +701,18 @@ export const useGame = create<GameState>()(
           sendAction(get().roomId!, get().localPlayer.id, "markReadyToVote");
         }
       },
+
+      proceedFromInitiatorAction: () => {
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "proceedFromInitiator");
+        }
+      },
+
+      revealRolesFromInitiatorAction: () => {
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "revealRolesFromInitiator");
+        }
+      },
     }),
     {
       name: "imposter-who-game",
@@ -596,6 +724,9 @@ export const useGame = create<GameState>()(
         imposterCount: state.imposterCount,
         timeLimitEnabled: state.timeLimitEnabled,
         imposterHintEnabled: state.imposterHintEnabled,
+        evilGuardianEnabled: state.evilGuardianEnabled,
+        initiatorEnabled: state.initiatorEnabled,
+        extraVoterEnabled: state.extraVoterEnabled,
         localPlayer: state.localPlayer,
       }),
     },
