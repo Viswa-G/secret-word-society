@@ -11,8 +11,20 @@ import {
   Vote,
   Target,
   Sparkles,
+  Volume2,
+  VolumeX,
+  Clock,
+  Plus,
+  Pause,
+  RotateCcw,
+  Check,
+  AlertCircle,
+  Trophy,
+  Users,
 } from "lucide-react";
 import { useGame, type Player, type ChatMessage, type Assignment } from "@/lib/game-store";
+import { sounds } from "@/lib/sounds";
+import { toast } from "sonner";
 
 function LogoBadge() {
   return (
@@ -26,11 +38,34 @@ function LogoBadge() {
 }
 
 function TopBar({ onClose }: { onClose: () => void }) {
+  const [muted, setMuted] = useState(() => sounds.isMuted());
+
+  const handleToggleSound = () => {
+    const next = sounds.toggleMute();
+    setMuted(next);
+  };
+
   return (
     <div className="flex items-center justify-between pt-4">
-      <div className="w-10" />
+      <button
+        type="button"
+        onClick={handleToggleSound}
+        aria-label={muted ? "Unmute sounds" : "Mute sounds"}
+        className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-secondary/60 active:scale-95 transition"
+      >
+        {muted ? (
+          <VolumeX className="h-7 w-7 text-destructive" />
+        ) : (
+          <Volume2 className="h-7 w-7 text-foreground" />
+        )}
+      </button>
       <LogoBadge />
-      <button onClick={onClose} aria-label="Exit" className="text-muted-foreground p-2">
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Exit"
+        className="text-muted-foreground hover:text-foreground p-2 rounded-xl hover:bg-secondary/60 active:scale-95 transition"
+      >
         <X className="h-8 w-8" strokeWidth={2.5} />
       </button>
     </div>
@@ -365,19 +400,25 @@ export function RevealScreen() {
   const softColor = assignment.isImposter ? "bg-[oklch(0.9_0.1_60)]" : "bg-[oklch(0.94_0.11_100)]";
 
   const startHold = () => {
+    sounds.playTap();
+    if (holdTimer.current) clearTimeout(holdTimer.current);
     holdTimer.current = window.setTimeout(() => {
       setFlipped(true);
       setFlippedOnce(true);
+      sounds.playCardFlip();
       if (!isOnline) {
         g.markViewed();
       }
-    }, 180);
+    }, 120);
   };
 
   const endHold = () => {
     if (holdTimer.current) {
       window.clearTimeout(holdTimer.current);
       holdTimer.current = null;
+    }
+    if (flipped) {
+      sounds.playCardFlip();
     }
     setFlipped(false);
   };
@@ -392,80 +433,207 @@ export function RevealScreen() {
       </div>
 
       <div className="mx-auto w-full max-w-md flex-1 px-4 flex flex-col items-center justify-center pb-6">
+        {/* 3D Perspective Card Container */}
         <div
-          className={`relative w-full aspect-[3/4] max-h-[60vh] rounded-3xl card-shadow overflow-hidden select-none touch-none ${flipped ? softColor : cardColor} card-ray-bg transition-colors`}
+          className="relative w-full aspect-[3/4] max-h-[60vh] select-none touch-none"
+          style={{ perspective: "1200px" }}
           onPointerDown={startHold}
           onPointerUp={endHold}
           onPointerLeave={endHold}
           onPointerCancel={endHold}
         >
-          {/* Player name */}
-          <div className="absolute top-10 left-0 right-0 text-center">
-            <h2 className="font-display text-4xl font-extrabold uppercase tracking-tight text-foreground">
-              {assignment.playerName}
-            </h2>
-            {!flipped && (
-              <p className="mt-2 text-base font-semibold text-foreground/80">
-                Do not tell the word to other players.
-              </p>
-            )}
-          </div>
+          <div
+            className="w-full h-full relative rounded-3xl cursor-pointer transition-transform duration-500 ease-out"
+            style={{
+              transformStyle: "preserve-3d",
+              WebkitTransformStyle: "preserve-3d",
+              transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
+            }}
+          >
+            {/* FRONT FACE (Facedown: Player Name + Hold prompt) */}
+            <div
+              className={`absolute inset-0 rounded-3xl card-shadow overflow-hidden p-6 flex flex-col items-center justify-between text-center ${cardColor} card-ray-bg`}
+              style={{
+                backfaceVisibility: "hidden",
+                WebkitBackfaceVisibility: "hidden",
+              }}
+            >
+              <div className="pt-4">
+                <span className="text-[10px] font-extrabold tracking-widest text-foreground/60 uppercase block">
+                  PASS DEVICE TO
+                </span>
+                <h2 className="font-display text-4xl sm:text-5xl font-extrabold uppercase tracking-tight text-foreground drop-shadow-sm mt-0.5">
+                  {assignment.playerName}
+                </h2>
+                <p className="mt-2 text-sm font-semibold text-foreground/80 max-w-[240px] mx-auto leading-snug">
+                  Keep your card secret from everyone else!
+                </p>
+              </div>
 
-          {/* Center content */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            {!flipped ? (
-              <div className="flex flex-col items-center gap-3">
-                <Hand className="h-20 w-20 text-foreground" strokeWidth={2} />
-                <p className="font-display text-lg font-extrabold">HOLD TO REVEAL</p>
+              <div className="flex flex-col items-center gap-3 my-auto">
+                <div className="h-24 w-24 rounded-full bg-foreground/10 grid place-items-center animate-pulse border-2 border-foreground/20">
+                  <Hand className="h-14 w-14 text-foreground" strokeWidth={2.2} />
+                </div>
+                <div className="rounded-full bg-foreground/15 px-5 py-2 border border-foreground/25 card-shadow">
+                  <p className="font-display text-base sm:text-lg font-black tracking-wider text-foreground">
+                    HOLD TO REVEAL
+                  </p>
+                </div>
               </div>
-            ) : assignment.specialRole === "guardian_angel" ? (
-              <div className="mx-6 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-yellow/25 border border-yellow/50 px-3.5 py-1 text-xs font-display font-black text-foreground uppercase tracking-wider">
-                  👼 GUARDIAN ANGEL
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    SECRET WORD
-                  </p>
-                  <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
-                    {g.word}
-                  </p>
-                </div>
-                {assignment.guardianAngelClue && (
-                  <div className="rounded-xl bg-pink/10 border border-pink/30 px-3 py-2">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      IMPOSTOR CLUE
-                    </p>
-                    <p className="font-display text-base font-extrabold text-pink mt-0.5">
-                      “{assignment.guardianAngelClue}”
-                    </p>
+
+              <div className="pb-1 text-center">
+                <span className="text-[10px] font-extrabold text-foreground/50 uppercase tracking-widest">
+                  🔄 3D Card • Release to hide
+                </span>
+              </div>
+            </div>
+
+            {/* BACK FACE (Faceup: Word / Role Reveal) */}
+            <div
+              className={`absolute inset-0 rounded-3xl card-shadow overflow-hidden p-6 flex flex-col items-center justify-center text-center ${softColor} card-ray-bg`}
+              style={{
+                backfaceVisibility: "hidden",
+                WebkitBackfaceVisibility: "hidden",
+                transform: "rotateY(180deg)",
+              }}
+            >
+              <div className="absolute top-6 left-0 right-0 text-center">
+                <h3 className="font-display text-2xl font-black uppercase tracking-tight text-foreground/75">
+                  {assignment.playerName}
+                </h3>
+              </div>
+
+              <div className="w-full flex items-center justify-center pointer-events-none">
+                {assignment.specialRole === "guardian_angel" ? (
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-[280px]">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-yellow/25 border border-yellow/50 px-3.5 py-1 text-xs font-display font-black text-foreground uppercase tracking-wider">
+                      👼 GUARDIAN ANGEL
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        SECRET WORD
+                      </p>
+                      <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
+                        {g.word}
+                      </p>
+                    </div>
+                    {assignment.guardianAngelClue && (
+                      <div className="rounded-xl bg-pink/10 border border-pink/30 px-3 py-2">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          IMPOSTOR CLUE
+                        </p>
+                        <p className="font-display text-base font-extrabold text-pink mt-0.5">
+                          “{assignment.guardianAngelClue}”
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : assignment.specialRole === "initiator" ? (
-              <div className="mx-6 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3">
-                <div
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider border ${
-                    assignment.isImposter
-                      ? "bg-destructive/15 text-destructive border-destructive/30"
-                      : "bg-yellow/25 text-foreground border-yellow/50"
-                  }`}
-                >
-                  <Zap className="h-4 w-4 fill-yellow text-yellow" /> INITIATOR
-                </div>
-                {assignment.isImposter ? (
-                  <div className="space-y-1">
+                ) : assignment.specialRole === "initiator" ? (
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-[280px]">
+                    <div
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider border ${
+                        assignment.isImposter
+                          ? "bg-destructive/15 text-destructive border-destructive/30"
+                          : "bg-yellow/25 text-foreground border-yellow/50"
+                      }`}
+                    >
+                      <Zap className="h-4 w-4 fill-yellow text-yellow" /> INITIATOR
+                    </div>
+                    {assignment.isImposter ? (
+                      <div className="space-y-1">
+                        <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
+                          IMPOSTOR!
+                        </p>
+                        {assignment.clue && (
+                          <p className="font-display text-base font-bold text-foreground/80">
+                            Hint: “{assignment.clue}”
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          SECRET WORD
+                        </p>
+                        <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
+                          {g.word}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : assignment.specialRole === "extra_voter" ? (
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-[280px]">
+                    <div
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider border ${
+                        assignment.isImposter
+                          ? "bg-destructive/15 text-destructive border-destructive/30"
+                          : "bg-purple-100 text-purple-900 border-purple-300"
+                      }`}
+                    >
+                      <Vote className="h-4 w-4 text-purple-700" /> EXTRA VOTER
+                    </div>
+                    {assignment.isImposter ? (
+                      <div className="space-y-1">
+                        <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
+                          IMPOSTOR!
+                        </p>
+                        {assignment.clue && (
+                          <p className="font-display text-base font-bold text-foreground/80">
+                            Hint: “{assignment.clue}”
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          SECRET WORD
+                        </p>
+                        <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
+                          {g.word}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : assignment.specialRole === "bounty_hunter" ? (
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-[280px]">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 text-red-700 border border-red-300 px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider">
+                      <Target className="h-4 w-4" /> BOUNTY HUNTER
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        SECRET WORD
+                      </p>
+                      <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
+                        {g.word}
+                      </p>
+                    </div>
+                    {assignment.bountyTargetName && (
+                      <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2">
+                        <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">
+                          BOUNTY TARGET
+                        </p>
+                        <p className="font-display text-lg font-black text-red-700 mt-0.5 uppercase">
+                          {assignment.bountyTargetName}
+                        </p>
+                        <p className="text-[10px] font-semibold text-red-800/80">
+                          Convince everyone to vote them out!
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : assignment.isImposter ? (
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-1 w-full max-w-[280px]">
                     <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
                       IMPOSTOR!
                     </p>
                     {assignment.clue && (
-                      <p className="font-display text-base font-bold text-foreground/80">
+                      <p className="mt-2 font-display text-base font-bold text-foreground/80">
                         Hint: “{assignment.clue}”
                       </p>
                     )}
                   </div>
                 ) : (
-                  <div>
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-8 py-6 text-center card-shadow w-full max-w-[280px]">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                       SECRET WORD
                     </p>
@@ -475,94 +643,17 @@ export function RevealScreen() {
                   </div>
                 )}
               </div>
-            ) : assignment.specialRole === "extra_voter" ? (
-              <div className="mx-6 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3">
-                <div
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider border ${
-                    assignment.isImposter
-                      ? "bg-destructive/15 text-destructive border-destructive/30"
-                      : "bg-purple-100 text-purple-900 border-purple-300"
-                  }`}
-                >
-                  <Vote className="h-4 w-4 text-purple-700" /> EXTRA VOTER
-                </div>
-                {assignment.isImposter ? (
-                  <div className="space-y-1">
-                    <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
-                      IMPOSTOR!
-                    </p>
-                    {assignment.clue && (
-                      <p className="font-display text-base font-bold text-foreground/80">
-                        Hint: “{assignment.clue}”
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      SECRET WORD
-                    </p>
-                    <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
-                      {g.word}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : assignment.specialRole === "bounty_hunter" ? (
-              <div className="mx-6 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 text-red-700 border border-red-300 px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider">
-                  <Target className="h-4 w-4" /> BOUNTY HUNTER
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    SECRET WORD
-                  </p>
-                  <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
-                    {g.word}
-                  </p>
-                </div>
-                {assignment.bountyTargetName && (
-                  <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2">
-                    <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">
-                      BOUNTY TARGET
-                    </p>
-                    <p className="font-display text-lg font-black text-red-700 mt-0.5 uppercase">
-                      {assignment.bountyTargetName}
-                    </p>
-                    <p className="text-[10px] font-semibold text-red-800/80">
-                      Convince everyone to vote them out!
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : assignment.isImposter ? (
-              <div className="mx-6 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-1">
-                <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
-                  IMPOSTOR!
-                </p>
-                {assignment.clue && (
-                  <p className="mt-2 font-display text-base font-bold text-foreground/80">
-                    Hint: “{assignment.clue}”
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="mx-6 rounded-3xl border-2 border-foreground bg-white px-8 py-6 text-center card-shadow">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  SECRET WORD
-                </p>
-                <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
-                  {g.word}
-                </p>
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
         {isOnline ? (
           <div className="w-full mt-6 space-y-4">
             <button
-              onClick={g.markReadyAction}
+              onClick={() => {
+                sounds.playTap();
+                g.markReadyAction();
+              }}
               disabled={isReady || !flippedOnce}
               className="w-full max-w-sm mx-auto rounded-full bg-foreground py-4 font-display text-lg font-extrabold text-background flex items-center justify-center gap-2 btn-3d disabled:opacity-40"
             >
@@ -607,7 +698,10 @@ export function RevealScreen() {
 
             return (
               <button
-                onClick={g.nextPlayer}
+                onClick={() => {
+                  sounds.playTap();
+                  g.nextPlayer();
+                }}
                 disabled={!canNext}
                 className="mt-8 w-full max-w-sm rounded-full bg-foreground py-4 font-display text-lg font-extrabold text-background flex items-center justify-center gap-2 btn-3d disabled:opacity-40"
               >
@@ -739,127 +833,468 @@ export function ClueScreen() {
   );
 }
 
-export function DiscussScreen() {
+function OnlineDiscussScreen() {
   const g = useGame();
+  const me = g.onlinePlayers.find((p) => p.id === g.localPlayer.id);
+  const isReady = me ? me.ready : false;
+  const isSpectator = me ? me.spectator : false;
 
-  if (g.gameMode === "online") {
-    const me = g.onlinePlayers.find((p) => p.id === g.localPlayer.id);
-    const isReady = me ? me.ready : false;
-    const isSpectator = me ? me.spectator : false;
+  const handleReadyToVote = () => {
+    g.markReadyToVoteAction();
+  };
 
-    const handleReadyToVote = () => {
-      g.markReadyToVoteAction();
-    };
-
-    const starter =
-      g.onlinePlayers.find((p) => {
-        const asg = g.assignments.find((a) => a.playerId === p.id);
-        return asg && !asg.isImposter;
-      })?.name ?? "Someone";
-
-    return (
-      <div className="min-h-dvh bg-background flex flex-col">
-        <div className="mx-auto w-full max-w-md px-4">
-          <TopBar onClose={g.exitToLobby} />
-        </div>
-
-        <div className="mx-auto w-full max-w-md flex-1 px-4 py-4 flex flex-col gap-3">
-          {/* Starter Banner */}
-          <div className="rounded-2xl bg-card p-4 card-shadow text-center border-2 border-yellow/30 flex flex-col items-center select-none">
-            <p className="font-display text-[10px] font-extrabold tracking-widest text-pink uppercase">
-              DISCUSSION PHASE
-            </p>
-            <p className="text-sm font-semibold mt-1">
-              <span className="rounded bg-lime px-2 py-0.5 font-extrabold text-foreground">
-                {starter}
-              </span>{" "}
-              starts the conversation!
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-1 max-w-[300px]">
-              Chat, debate clues, and catch the Imposter. Press "Ready to Vote" when ready to
-              proceed.
-            </p>
-          </div>
-
-          {/* Clue Board */}
-          <ClueBoard players={g.onlinePlayers} turnOrder={g.turnOrder} clues={g.clues} />
-
-          {/* Discussion Chat */}
-          <ChatPanel
-            chat={g.onlineChat}
-            localPlayerId={g.localPlayer.id}
-            onSend={g.sendChatMessage}
-          />
-
-          {/* Ready system */}
-          <div className="space-y-2 mt-auto">
-            {!isSpectator && (
-              <button
-                onClick={handleReadyToVote}
-                disabled={isReady}
-                className="w-full rounded-2xl bg-lime py-4 font-display font-extrabold text-foreground/90 flex items-center justify-center gap-2 btn-3d disabled:opacity-40"
-              >
-                {isReady ? "WAITING FOR OTHERS..." : "READY TO VOTE"}
-              </button>
-            )}
-
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {g.onlinePlayers
-                .filter((p) => !p.spectator && p.connected)
-                .map((p) => (
-                  <span
-                    key={p.id}
-                    className={`text-xs px-2.5 py-1 rounded-full font-bold transition-colors ${
-                      p.ready
-                        ? "bg-lime/20 text-foreground"
-                        : "bg-secondary text-muted-foreground/60"
-                    }`}
-                  >
-                    {p.name} {p.ready ? "✓" : "..."}
-                  </span>
-                ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Classic Discuss Screen (original)
   const starter =
-    g.assignments.find((a) => !a.isImposter)?.playerName ??
-    g.assignments[0]?.playerName ??
-    "Someone";
+    g.onlinePlayers.find((p) => {
+      const asg = g.assignments.find((a) => a.playerId === p.id);
+      return asg && !asg.isImposter;
+    })?.name ?? "Someone";
 
   return (
     <div className="min-h-dvh bg-background flex flex-col">
       <div className="mx-auto w-full max-w-md px-4">
         <TopBar onClose={g.exitToLobby} />
       </div>
-      <div className="mx-auto w-full max-w-md flex-1 px-4 pt-8 text-center animate-in fade-in">
-        <h1 className="font-display text-3xl font-extrabold leading-tight">
-          Game started! Time to talk and catch the imposter.
-        </h1>
-        <p className="mt-6 text-lg">
-          <span className="rounded bg-lime px-2 py-0.5 font-bold text-foreground">{starter}</span>{" "}
-          starts the conversation!
-        </p>
 
-        <button
-          onClick={g.revealResult}
-          className="mt-12 w-full rounded-2xl bg-white py-5 font-display font-extrabold text-foreground card-shadow btn-3d active:scale-[0.98] transition"
-        >
-          REVEAL IMPOSTER &amp; WORD
-        </button>
-        <button
-          onClick={g.newGame}
-          className="mt-4 mx-auto block underline underline-offset-4 font-semibold"
-        >
-          New Game
-        </button>
+      <div className="mx-auto w-full max-w-md flex-1 px-4 py-4 flex flex-col gap-3">
+        {/* Starter Banner */}
+        <div className="rounded-2xl bg-card p-4 card-shadow text-center border-2 border-yellow/30 flex flex-col items-center select-none">
+          <p className="font-display text-[10px] font-extrabold tracking-widest text-pink uppercase">
+            DISCUSSION PHASE
+          </p>
+          <p className="text-sm font-semibold mt-1">
+            <span className="rounded bg-lime px-2 py-0.5 font-extrabold text-foreground">
+              {starter}
+            </span>{" "}
+            starts the conversation!
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-1 max-w-[300px]">
+            Chat, debate clues, and catch the Imposter. Press "Ready to Vote" when ready to proceed.
+          </p>
+        </div>
+
+        {/* Clue Board */}
+        <ClueBoard players={g.onlinePlayers} turnOrder={g.turnOrder} clues={g.clues} />
+
+        {/* Discussion Chat */}
+        <ChatPanel
+          chat={g.onlineChat}
+          localPlayerId={g.localPlayer.id}
+          onSend={g.sendChatMessage}
+        />
+
+        {/* Ready system */}
+        <div className="space-y-2 mt-auto">
+          {!isSpectator && (
+            <button
+              onClick={handleReadyToVote}
+              disabled={isReady}
+              className="w-full rounded-2xl bg-lime py-4 font-display font-extrabold text-foreground/90 flex items-center justify-center gap-2 btn-3d disabled:opacity-40"
+            >
+              {isReady ? "WAITING FOR OTHERS..." : "READY TO VOTE"}
+            </button>
+          )}
+
+          <div className="flex flex-wrap gap-1.5 justify-center">
+            {g.onlinePlayers
+              .filter((p) => !p.spectator && p.connected)
+              .map((p) => (
+                <span
+                  key={p.id}
+                  className={`text-xs px-2.5 py-1 rounded-full font-bold transition-colors ${
+                    p.ready ? "bg-lime/20 text-foreground" : "bg-secondary text-muted-foreground/60"
+                  }`}
+                >
+                  {p.name} {p.ready ? "✓" : "..."}
+                </span>
+              ))}
+          </div>
+        </div>
       </div>
     </div>
   );
+}
+
+function ClassicDiscussScreen() {
+  const g = useGame();
+  const starter =
+    g.assignments.find((a) => !a.isImposter)?.playerName ??
+    g.assignments[0]?.playerName ??
+    "Someone";
+
+  const [timeLeft, setTimeLeft] = useState(() => g.timeLimitDuration || 90);
+  const [isRunning, setIsRunning] = useState(true);
+  const [isAccusing, setIsAccusing] = useState(false);
+  const [selectedAccused, setSelectedAccused] = useState<Assignment | null>(null);
+  const [suspenseState, setSuspenseState] = useState<"idle" | "drumroll" | "revealed">("idle");
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (!isRunning || timeLeft <= 0) return;
+    const interval = window.setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          sounds.playBuzzer();
+          return 0;
+        }
+        if (prev <= 6 && prev > 1) {
+          sounds.playTick();
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isRunning, timeLeft]);
+
+  const handleAddTime = (seconds: number = 30) => {
+    sounds.playTap();
+    setTimeLeft((prev) => prev + seconds);
+    toast.success(`+${seconds}s added to discussion timer!`);
+  };
+
+  const handleToggleTimer = () => {
+    sounds.playTap();
+    setIsRunning((prev) => !prev);
+  };
+
+  const handleResetTimer = () => {
+    sounds.playTap();
+    setTimeLeft(g.timeLimitDuration || 90);
+    setIsRunning(false);
+  };
+
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const isUrgent = timeLeft > 0 && timeLeft <= 15;
+  const isExpired = timeLeft === 0;
+
+  const handleOpenAccuse = () => {
+    sounds.playTap();
+    setIsAccusing(true);
+    setSelectedAccused(null);
+    setSuspenseState("idle");
+  };
+
+  const handleSelectPlayer = (assignment: Assignment) => {
+    sounds.playTap();
+    setSelectedAccused(assignment);
+    setSuspenseState("idle");
+  };
+
+  const handleRevealAccused = () => {
+    if (!selectedAccused) return;
+    sounds.playDrumroll();
+    setSuspenseState("drumroll");
+    window.setTimeout(() => {
+      setSuspenseState("revealed");
+      if (selectedAccused.isImposter) {
+        sounds.playVictory();
+      } else {
+        sounds.playDefeat();
+      }
+      g.setClassicAccusedPlayerName(selectedAccused.playerName);
+    }, 700);
+  };
+
+  const handleGoToFullResults = () => {
+    sounds.playTap();
+    g.revealResult();
+  };
+
+  return (
+    <div className="min-h-dvh bg-background flex flex-col">
+      <div className="mx-auto w-full max-w-md px-4">
+        <TopBar onClose={g.exitToLobby} />
+      </div>
+
+      <div className="mx-auto w-full max-w-md flex-1 px-4 py-4 flex flex-col justify-between text-center animate-in fade-in">
+        <div className="space-y-4 pt-2">
+          {/* Header */}
+          <div>
+            <span className="text-[10px] font-extrabold tracking-widest text-pink uppercase block">
+              DISCUSSION &amp; CLUES
+            </span>
+            <h1 className="font-display text-3xl font-black leading-tight text-foreground mt-0.5">
+              Time to talk &amp; catch the imposter!
+            </h1>
+          </div>
+
+          {/* Starter Banner */}
+          <div className="rounded-2xl bg-secondary/60 p-3 border border-border/70 flex items-center justify-center gap-2 text-sm font-semibold">
+            <span>🗣️</span>
+            <span>
+              <span className="rounded-md bg-lime px-2 py-0.5 font-black text-foreground">
+                {starter}
+              </span>{" "}
+              starts the conversation!
+            </span>
+          </div>
+
+          {/* Discussion Countdown Timer Card */}
+          <div
+            className={`rounded-3xl p-5 card-shadow border-2 transition-all ${
+              isExpired
+                ? "bg-destructive/15 border-destructive/60 animate-pulse"
+                : isUrgent
+                  ? "bg-orange-100/70 border-orange-400"
+                  : "bg-card border-border/80"
+            }`}
+          >
+            <div className="flex items-center justify-between text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-foreground/80" /> DISCUSSION TIMER
+              </span>
+              <span>{isRunning ? "RUNNING" : "PAUSED"}</span>
+            </div>
+
+            {/* Big Timer Digits */}
+            <div className="py-2">
+              <span
+                className={`font-display text-5xl sm:text-6xl font-black tracking-tight ${
+                  isExpired ? "text-destructive" : isUrgent ? "text-orange-600" : "text-foreground"
+                }`}
+              >
+                {formattedTime}
+              </span>
+              {isExpired && (
+                <p className="text-xs font-black text-destructive uppercase tracking-wider mt-1">
+                  ⏰ TIME'S UP! CAST YOUR VOTES!
+                </p>
+              )}
+            </div>
+
+            {/* Timer Controls: Play/Pause, +30s, Reset */}
+            <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-border/50">
+              <button
+                type="button"
+                onClick={handleToggleTimer}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 font-display font-extrabold text-xs text-foreground card-shadow active:scale-95 transition"
+              >
+                {isRunning ? (
+                  <>
+                    <Pause className="h-4 w-4" /> Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4 fill-current" /> Resume
+                  </>
+                )}
+              </button>
+
+              {/* +30s Button */}
+              <button
+                type="button"
+                onClick={() => handleAddTime(30)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-lime hover:bg-lime/90 font-display font-black text-xs text-foreground card-shadow active:scale-95 transition"
+              >
+                <Plus className="h-4 w-4" strokeWidth={3} /> +30s
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetTimer}
+                title="Reset timer"
+                className="p-2 rounded-xl bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground active:scale-95 transition"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="space-y-3 pt-6 pb-2">
+          <button
+            type="button"
+            onClick={handleOpenAccuse}
+            className="w-full rounded-2xl bg-pink text-white py-4 font-display font-black text-lg card-shadow btn-3d active:scale-[0.98] transition flex items-center justify-center gap-2"
+          >
+            <Target className="h-6 w-6" /> 🎯 ACCUSE &amp; VOTE OUT
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGoToFullResults}
+            className="w-full rounded-2xl bg-white py-3.5 font-display font-bold text-foreground card-shadow border border-border/80 hover:bg-secondary/50 active:scale-95 transition text-sm"
+          >
+            REVEAL ALL ROLES &amp; WORD DIRECTLY
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playTap();
+              g.newGame();
+            }}
+            className="mx-auto block text-xs underline underline-offset-4 font-semibold text-muted-foreground hover:text-foreground"
+          >
+            Cancel &amp; New Game
+          </button>
+        </div>
+      </div>
+
+      {/* Room Accusation Modal */}
+      {isAccusing && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-3 sm:p-4 animate-in fade-in">
+          <div className="w-full max-w-md bg-card rounded-3xl p-5 card-shadow border-2 border-foreground space-y-4 animate-in slide-in-from-bottom-6">
+            <div className="flex items-center justify-between pb-1 border-b border-border/50">
+              <div>
+                <span className="text-[10px] font-extrabold tracking-widest text-pink uppercase block">
+                  ROOM ACCUSATION
+                </span>
+                <h3 className="font-display text-xl font-black text-foreground">
+                  Who did the room vote out?
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAccusing(false)}
+                className="p-1 rounded-xl text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {suspenseState === "revealed" && selectedAccused ? (
+              <div className="space-y-4 py-2 animate-in zoom-in-95">
+                <div
+                  className={`rounded-2xl p-5 text-center card-shadow border-2 ${
+                    selectedAccused.isImposter
+                      ? "bg-lime/25 border-lime text-foreground"
+                      : "bg-destructive/15 border-destructive text-destructive"
+                  }`}
+                >
+                  <span className="text-4xl block mb-2">
+                    {selectedAccused.isImposter ? "🎉" : "😱"}
+                  </span>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black uppercase mb-1 bg-background/80">
+                    {selectedAccused.isImposter ? (
+                      <span className="text-foreground flex items-center gap-1">
+                        <Trophy className="h-3.5 w-3.5" /> BUSTED!
+                      </span>
+                    ) : (
+                      <span className="text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" /> INNOCENT!
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-display text-2xl font-black mt-1">
+                    {selectedAccused.playerName}{" "}
+                    {selectedAccused.isImposter ? "WAS AN IMPOSTOR!" : "WAS INNOCENT!"}
+                  </h4>
+                  <p className="text-xs font-semibold mt-1 opacity-90">
+                    {selectedAccused.isImposter
+                      ? "Great job! The crewmates caught the imposter!"
+                      : "Oh no! The imposter deceived everyone and survives!"}
+                  </p>
+                  {/* If Bounty Hunter in match */}
+                  {(() => {
+                    const bh = g.assignments.find((a) => a.specialRole === "bounty_hunter");
+                    if (bh && bh.bountyTargetName === selectedAccused.playerName) {
+                      return (
+                        <div className="mt-3 rounded-xl bg-red-100 text-red-800 p-2 text-xs font-bold border border-red-300">
+                          🎯 BOUNTY COLLECTED! {bh.playerName} achieved their Bounty Target!
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleGoToFullResults}
+                    className="w-full rounded-2xl bg-lime py-4 font-display font-black text-foreground btn-3d text-base"
+                  >
+                    VIEW FULL MATCH RESULTS &amp; WORD
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAccused(null);
+                      setSuspenseState("idle");
+                    }}
+                    className="w-full text-center text-xs font-bold text-muted-foreground hover:text-foreground py-2"
+                  >
+                    Choose another player
+                  </button>
+                </div>
+              </div>
+            ) : suspenseState === "drumroll" && selectedAccused ? (
+              <div className="py-8 text-center space-y-3">
+                <div className="text-5xl animate-bounce">🥁</div>
+                <h4 className="font-display text-xl font-black text-foreground">
+                  Revealing {selectedAccused.playerName}'s Identity...
+                </h4>
+                <p className="text-xs font-bold text-muted-foreground animate-pulse">
+                  Tension is rising!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground font-semibold">
+                  Tap the player the room agreed to eliminate after debate:
+                </p>
+                <div className="grid grid-cols-2 gap-2 max-h-[45vh] overflow-y-auto pr-1">
+                  {g.assignments.map((assignment) => {
+                    const isSelected = selectedAccused?.playerName === assignment.playerName;
+                    return (
+                      <button
+                        key={assignment.playerName}
+                        type="button"
+                        onClick={() => handleSelectPlayer(assignment)}
+                        className={`p-3 rounded-2xl border-2 text-left transition font-display font-extrabold flex items-center justify-between ${
+                          isSelected
+                            ? "bg-pink text-white border-foreground card-shadow scale-[1.02]"
+                            : "bg-secondary/70 hover:bg-secondary text-foreground border-border/80"
+                        }`}
+                      >
+                        <span className="truncate text-sm sm:text-base">
+                          {assignment.playerName}
+                        </span>
+                        {isSelected && <Check className="h-5 w-5 shrink-0 ml-1" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedAccused ? (
+                  <div className="pt-2 space-y-2 animate-in fade-in">
+                    <button
+                      type="button"
+                      onClick={handleRevealAccused}
+                      className="w-full rounded-2xl bg-destructive py-4 font-display font-black text-white btn-3d text-base flex items-center justify-center gap-2"
+                    >
+                      🥁 REVEAL {selectedAccused.playerName.toUpperCase()}'S IDENTITY
+                    </button>
+                  </div>
+                ) : (
+                  <div className="pt-1 text-center">
+                    <button
+                      type="button"
+                      onClick={handleGoToFullResults}
+                      className="text-xs font-bold text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                    >
+                      Skip straight to full reveal
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function DiscussScreen() {
+  const g = useGame();
+  if (g.gameMode === "online") {
+    return <OnlineDiscussScreen />;
+  }
+  return <ClassicDiscussScreen />;
 }
 
 export function VoteScreen() {
@@ -1086,180 +1521,230 @@ export function VoteScreen() {
   );
 }
 
-export function ResultScreen() {
+function OnlineResultScreen() {
   const g = useGame();
   const imposters = g.assignments.filter((a) => a.isImposter);
+  const me = g.onlinePlayers.find((p) => p.id === g.localPlayer.id);
+  const isHost = me ? me.isHost : false;
 
-  if (g.gameMode === "online") {
-    const me = g.onlinePlayers.find((p) => p.id === g.localPlayer.id);
-    const isHost = me ? me.isHost : false;
+  const secretWord = g.word;
+  const hintWord = imposters.find((imp) => imp.clue)?.clue;
 
-    const secretWord = g.word;
-    const hintWord = imposters.find((imp) => imp.clue)?.clue;
+  return (
+    <div className="min-h-dvh bg-background flex flex-col">
+      <div className="mx-auto w-full max-w-md px-4">
+        <TopBar onClose={g.exitToLobby} />
+      </div>
 
-    return (
-      <div className="min-h-dvh bg-background flex flex-col">
-        <div className="mx-auto w-full max-w-md px-4">
-          <TopBar onClose={g.exitToLobby} />
+      <div className="mx-auto w-full max-w-md flex-1 px-4 py-4 flex flex-col gap-3">
+        {/* Winner Banner */}
+        <div className="rounded-3xl bg-card p-5 card-shadow text-center border-4 border-yellow/60 card-ray-bg select-none">
+          <p className="font-display text-[10px] font-extrabold tracking-widest text-pink/85 uppercase">
+            GAME OVER
+          </p>
+          <h2 className="mt-1 font-display text-4xl font-extrabold uppercase tracking-tight text-foreground">
+            {g.onlineWinner === "crew" ? "CREWMATES WIN!" : "IMPOSTOR WINS!"}
+          </h2>
+          <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
+            <span className="text-xs font-bold text-foreground/80">Impostors:</span>
+            {imposters.map((imp) => (
+              <span
+                key={imp.playerId}
+                className="rounded-full bg-pink/15 text-pink font-extrabold px-2.5 py-0.5 text-xs border border-pink/20"
+              >
+                {imp.playerName}
+              </span>
+            ))}
+          </div>
+          {hintWord && (
+            <p className="mt-2 text-xs text-foreground/75 italic">Hint given: “{hintWord}”</p>
+          )}
         </div>
 
-        <div className="mx-auto w-full max-w-md flex-1 px-4 py-4 flex flex-col gap-3">
-          {/* Winner Banner */}
-          <div className="rounded-3xl bg-card p-5 card-shadow text-center border-4 border-yellow/60 card-ray-bg select-none">
-            <p className="font-display text-[10px] font-extrabold tracking-widest text-pink/85 uppercase">
-              GAME OVER
+        {/* Secret Word */}
+        <div className="rounded-2xl bg-card p-4.5 card-shadow flex items-center justify-between">
+          <div>
+            <p className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase">
+              SECRET WORD
             </p>
-            <h2 className="mt-1 font-display text-4xl font-extrabold uppercase tracking-tight text-foreground">
-              {g.onlineWinner === "crew" ? "CREWMATES WIN!" : "IMPOSTOR WINS!"}
-            </h2>
-            <div className="mt-3 flex items-center justify-center gap-1.5 flex-wrap">
-              <span className="text-xs font-bold text-foreground/80">Impostors:</span>
-              {imposters.map((imp) => (
-                <span
-                  key={imp.playerId}
-                  className="rounded-full bg-pink/15 text-pink font-extrabold px-2.5 py-0.5 text-xs border border-pink/20"
-                >
-                  {imp.playerName}
-                </span>
-              ))}
-            </div>
-            {hintWord && (
-              <p className="mt-2 text-xs text-foreground/75 italic">Hint given: “{hintWord}”</p>
-            )}
+            <p className="font-display text-2xl font-extrabold text-pink mt-0.5">{secretWord}</p>
           </div>
-
-          {/* Secret Word */}
-          <div className="rounded-2xl bg-card p-4.5 card-shadow flex items-center justify-between">
-            <div>
+          {g.category && (
+            <div className="text-right">
               <p className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase">
-                SECRET WORD
+                CATEGORY
               </p>
-              <p className="font-display text-2xl font-extrabold text-pink mt-0.5">{secretWord}</p>
+              <p className="font-bold text-foreground/80 text-sm mt-0.5">{g.category}</p>
             </div>
-            {g.category && (
-              <div className="text-right">
-                <p className="text-[9px] font-bold text-muted-foreground tracking-wider uppercase">
-                  CATEGORY
-                </p>
-                <p className="font-bold text-foreground/80 text-sm mt-0.5">{g.category}</p>
-              </div>
-            )}
-          </div>
+          )}
+        </div>
 
-          {/* Special Roles Reveal */}
-          <SpecialRolesReveal assignments={g.assignments} />
+        {/* Special Roles Reveal */}
+        <SpecialRolesReveal assignments={g.assignments} />
 
-          {/* Vote breakdown */}
-          {g.votingHistory.length > 0 && (
-            <div className="rounded-2xl bg-card p-4 card-shadow border border-border/70 space-y-2.5 max-h-[22vh] overflow-y-auto select-none">
-              <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase text-center">
-                VOTING ROUND HISTORY:
-              </p>
-              {g.votingHistory.map((history, idx) => {
-                const elimPlayer = g.onlinePlayers.find((p) => p.id === history.eliminatedPlayerId);
-                return (
-                  <div
-                    key={idx}
-                    className="text-xs border-b border-border/40 last:border-0 pb-2 last:pb-0 space-y-1.5"
-                  >
-                    <p className="font-bold text-foreground/80">
-                      Vote #{history.voteIndex + 1}:{" "}
-                      {elimPlayer ? (
-                        <>
-                          Eliminated{" "}
-                          <span className="text-pink font-extrabold">{elimPlayer.name}</span>
-                          {history.wasImposter ? (
-                            <span className="ml-1 bg-destructive/15 text-destructive font-bold px-1.5 py-0.2 rounded text-[8px] uppercase">
-                              IMPOSTOR
-                            </span>
-                          ) : (
-                            <span className="ml-1 bg-secondary text-muted-foreground font-bold px-1.5 py-0.2 rounded text-[8px] uppercase">
-                              CREWMATE
+        {/* Vote breakdown */}
+        {g.votingHistory.length > 0 && (
+          <div className="rounded-2xl bg-card p-4 card-shadow border border-border/70 space-y-2.5 max-h-[22vh] overflow-y-auto select-none">
+            <p className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase text-center">
+              VOTING ROUND HISTORY:
+            </p>
+            {g.votingHistory.map((history, idx) => {
+              const elimPlayer = g.onlinePlayers.find((p) => p.id === history.eliminatedPlayerId);
+              return (
+                <div
+                  key={idx}
+                  className="text-xs border-b border-border/40 last:border-0 pb-2 last:pb-0 space-y-1.5"
+                >
+                  <p className="font-bold text-foreground/80">
+                    Vote #{history.voteIndex + 1}:{" "}
+                    {elimPlayer ? (
+                      <>
+                        Eliminated{" "}
+                        <span className="text-pink font-extrabold">{elimPlayer.name}</span>
+                        {history.wasImposter ? (
+                          <span className="ml-1 bg-destructive/15 text-destructive font-bold px-1.5 py-0.2 rounded text-[8px] uppercase">
+                            IMPOSTOR
+                          </span>
+                        ) : (
+                          <span className="ml-1 bg-secondary text-muted-foreground font-bold px-1.5 py-0.2 rounded text-[8px] uppercase">
+                            CREWMATE
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      "No one eliminated (Tie)"
+                    )}
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-2.5 gap-y-0.5 pl-2 border-l border-border/50 text-[10px] text-muted-foreground/80 font-semibold">
+                    {history.votes.map((vote, vIdx) => {
+                      const voter = g.onlinePlayers.find((p) => p.id === vote.voterId);
+                      const target = g.onlinePlayers.find((p) => p.id === vote.targetId);
+                      if (!voter || !target) return null;
+                      return (
+                        <div key={vIdx} className="truncate flex items-center gap-1">
+                          <span>
+                            {voter.name} → {target.name}
+                          </span>
+                          {vote.isExtraVote && (
+                            <span className="text-[8px] bg-pink/20 text-pink font-extrabold px-1 rounded">
+                              +1
                             </span>
                           )}
-                        </>
-                      ) : (
-                        "No one eliminated (Tie)"
-                      )}
-                    </p>
-                    <div className="grid grid-cols-2 gap-x-2.5 gap-y-0.5 pl-2 border-l border-border/50 text-[10px] text-muted-foreground/80 font-semibold">
-                      {history.votes.map((vote, vIdx) => {
-                        const voter = g.onlinePlayers.find((p) => p.id === vote.voterId);
-                        const target = g.onlinePlayers.find((p) => p.id === vote.targetId);
-                        if (!voter || !target) return null;
-                        return (
-                          <div key={vIdx} className="truncate flex items-center gap-1">
-                            <span>
-                              {voter.name} → {target.name}
-                            </span>
-                            {vote.isExtraVote && (
-                              <span className="text-[8px] bg-pink/20 text-pink font-extrabold px-1 rounded">
-                                +1
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Live Clue Board */}
+        <ClueBoard players={g.onlinePlayers} turnOrder={g.turnOrder} clues={g.clues} />
+
+        {/* Chat panel */}
+        <ChatPanel
+          chat={g.onlineChat}
+          localPlayerId={g.localPlayer.id}
+          onSend={g.sendChatMessage}
+        />
+
+        {/* New Game trigger */}
+        <div className="mt-2 space-y-2 select-none">
+          {isHost ? (
+            <button
+              onClick={g.newGame}
+              className="w-full rounded-2xl bg-lime py-4.5 font-display text-xl font-extrabold text-foreground btn-3d"
+            >
+              START NEW GAME
+            </button>
+          ) : (
+            <div className="rounded-2xl bg-secondary/80 py-4 font-display text-md font-bold text-center text-muted-foreground card-shadow animate-pulse">
+              🎮 WAITING FOR HOST TO RESTART GAME
             </div>
           )}
 
-          {/* Live Clue Board */}
-          <ClueBoard players={g.onlinePlayers} turnOrder={g.turnOrder} clues={g.clues} />
-
-          {/* Chat panel */}
-          <ChatPanel
-            chat={g.onlineChat}
-            localPlayerId={g.localPlayer.id}
-            onSend={g.sendChatMessage}
-          />
-
-          {/* New Game trigger */}
-          <div className="mt-2 space-y-2 select-none">
-            {isHost ? (
-              <button
-                onClick={g.newGame}
-                className="w-full rounded-2xl bg-lime py-4.5 font-display text-xl font-extrabold text-foreground btn-3d"
-              >
-                START NEW GAME
-              </button>
-            ) : (
-              <div className="rounded-2xl bg-secondary/80 py-4 font-display text-md font-bold text-center text-muted-foreground card-shadow animate-pulse">
-                🎮 WAITING FOR HOST TO RESTART GAME
-              </div>
-            )}
-
-            <button
-              onClick={g.exitToLobby}
-              className="w-full rounded-2xl bg-secondary py-3.5 font-display font-bold text-foreground card-shadow hover:bg-secondary/70 active:scale-95 transition"
-            >
-              BACK TO LOBBY
-            </button>
-          </div>
+          <button
+            onClick={g.exitToLobby}
+            className="w-full rounded-2xl bg-secondary py-3.5 font-display font-bold text-foreground card-shadow hover:bg-secondary/70 active:scale-95 transition"
+          >
+            BACK TO LOBBY
+          </button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  // Classic Result Screen (original)
+function ClassicResultScreen() {
+  const g = useGame();
+  const imposters = g.assignments.filter((a) => a.isImposter);
+
+  const accusedAssignment = g.classicAccusedPlayerName
+    ? g.assignments.find((a) => a.playerName === g.classicAccusedPlayerName)
+    : null;
+  const wasImposterEliminated = accusedAssignment?.isImposter;
+
+  useEffect(() => {
+    if (g.classicAccusedPlayerName) {
+      if (wasImposterEliminated) {
+        sounds.playVictory();
+      } else {
+        sounds.playDefeat();
+      }
+    }
+  }, [g.classicAccusedPlayerName, wasImposterEliminated]);
+
   return (
     <div className="min-h-dvh bg-background flex flex-col animate-in fade-in">
       <div className="mx-auto w-full max-w-md px-4">
         <TopBar onClose={g.exitToLobby} />
       </div>
-      <div className="mx-auto w-full max-w-md flex-1 px-4 pt-10 text-center space-y-4">
-        <div>
-          <p className="font-display text-sm font-extrabold tracking-widest text-foreground/70 uppercase">
-            IMPOSTERS:
+      <div className="mx-auto w-full max-w-md flex-1 px-4 py-6 text-center space-y-4">
+        {/* Accused Room Verdict Banner if a player was voted out */}
+        {accusedAssignment && (
+          <div
+            className={`rounded-3xl p-5 card-shadow text-center border-2 ${
+              wasImposterEliminated
+                ? "bg-lime/20 border-lime text-foreground"
+                : "bg-destructive/15 border-destructive/40 text-destructive"
+            }`}
+          >
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black uppercase mb-1 bg-background/80">
+              {wasImposterEliminated ? (
+                <span className="text-foreground flex items-center gap-1">
+                  <Trophy className="h-3.5 w-3.5" /> CREWMATE VICTORY
+                </span>
+              ) : (
+                <span className="text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5" /> IMPOSTOR VICTORY
+                </span>
+              )}
+            </div>
+            <h3 className="font-display text-2xl font-black mt-1">
+              {wasImposterEliminated
+                ? `${g.classicAccusedPlayerName} was eliminated!`
+                : `${g.classicAccusedPlayerName} was innocent!`}
+            </h3>
+            <p className="text-xs font-semibold text-foreground/80 mt-1">
+              {wasImposterEliminated
+                ? "The room voted out an Impostor! Great detective work."
+                : "The room eliminated an innocent player. The Impostors survived!"}
+            </p>
+          </div>
+        )}
+
+        {/* Impostor Reveal Card */}
+        <div className="rounded-3xl bg-card p-5 card-shadow border border-border/80">
+          <p className="font-display text-xs font-extrabold tracking-widest text-muted-foreground uppercase">
+            THE IMPOSTORS WERE:
           </p>
-          <h2 className="mt-1 font-display text-4xl font-extrabold text-destructive">
+          <h2 className="mt-1 font-display text-3xl sm:text-4xl font-black text-destructive">
             {imposters.map((i) => i.playerName).join(", ")}
           </h2>
           {imposters.some((i) => i.clue) && (
-            <p className="mt-2 text-foreground/70 text-sm">
+            <p className="mt-2 text-foreground/80 text-xs font-medium">
               Hints:{" "}
               {imposters
                 .filter((i) => i.clue)
@@ -1269,31 +1754,51 @@ export function ResultScreen() {
           )}
         </div>
 
-        <div className="mx-auto my-4 h-px w-4/5 bg-border" />
-
-        <div>
-          <p className="font-display text-sm font-extrabold tracking-widest text-foreground/70 uppercase">
-            SECRET WORD:
-          </p>
-          <p className="mt-1 font-display text-4xl font-extrabold text-pink">{g.word}</p>
-          {g.category && <p className="mt-0.5 text-sm text-muted-foreground">{g.category}</p>}
+        {/* Secret Word Card */}
+        <div className="rounded-2xl bg-card p-4 card-shadow border border-border/80 flex items-center justify-between">
+          <div className="text-left">
+            <p className="text-[10px] font-extrabold text-muted-foreground tracking-wider uppercase">
+              SECRET WORD
+            </p>
+            <p className="font-display text-2xl sm:text-3xl font-black text-pink mt-0.5">
+              {g.word}
+            </p>
+          </div>
+          {g.category && (
+            <div className="text-right">
+              <p className="text-[10px] font-extrabold text-muted-foreground tracking-wider uppercase">
+                CATEGORY
+              </p>
+              <p className="font-bold text-foreground/80 text-sm mt-0.5">{g.category}</p>
+            </div>
+          )}
         </div>
 
         {/* Special Roles Reveal */}
-        <div className="pt-2">
+        <div>
           <SpecialRolesReveal assignments={g.assignments} />
         </div>
 
-        <div className="pt-4 space-y-2">
+        {/* Quick Rematch & Navigation */}
+        <div className="pt-2 space-y-2.5">
           <button
-            onClick={g.newGame}
-            className="w-full rounded-2xl bg-lime py-4 font-display font-extrabold text-foreground btn-3d"
+            type="button"
+            onClick={() => {
+              sounds.playTap();
+              g.newGame();
+            }}
+            className="w-full rounded-2xl bg-lime py-4.5 font-display text-xl font-extrabold text-foreground btn-3d flex items-center justify-center gap-2"
           >
-            NEW GAME
+            <Zap className="h-5 w-5 fill-foreground text-foreground" />
+            PLAY AGAIN (NEW WORD)
           </button>
           <button
-            onClick={g.exitToLobby}
-            className="mx-auto block underline underline-offset-4 font-semibold text-muted-foreground"
+            type="button"
+            onClick={() => {
+              sounds.playTap();
+              g.exitToLobby();
+            }}
+            className="w-full rounded-2xl bg-secondary py-3.5 font-display font-bold text-foreground card-shadow hover:bg-secondary/70 active:scale-95 transition"
           >
             Back to Lobby
           </button>
@@ -1301,6 +1806,14 @@ export function ResultScreen() {
       </div>
     </div>
   );
+}
+
+export function ResultScreen() {
+  const g = useGame();
+  if (g.gameMode === "online") {
+    return <OnlineResultScreen />;
+  }
+  return <ClassicResultScreen />;
 }
 
 /* ---------------- INITIATOR SCREEN ---------------- */
@@ -1429,12 +1942,30 @@ export function InitiatorScreen() {
 
         {/* Action Buttons */}
         <div className="mt-4 space-y-2.5 select-none pb-4">
+          {!isOnline && (
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                g.goToDiscuss();
+              }}
+              className="w-full rounded-2xl bg-lime py-4.5 font-display text-xl font-extrabold text-foreground/90 card-shadow btn-3d active:scale-[0.98] transition flex items-center justify-center gap-2"
+            >
+              <Play className="h-6 w-6 fill-current" /> START DISCUSSION &amp; TIMER
+            </button>
+          )}
+
           {/* Main button: REVEAL ALL ROLES */}
           <button
+            type="button"
             onClick={handleRevealRoles}
-            className="w-full rounded-2xl bg-lime py-4.5 font-display text-xl font-extrabold text-foreground/90 card-shadow btn-3d active:scale-[0.98] transition flex items-center justify-center gap-2"
+            className={`w-full rounded-2xl py-3.5 font-display text-base font-extrabold card-shadow active:scale-[0.98] transition flex items-center justify-center gap-2 ${
+              isOnline
+                ? "bg-lime text-foreground/90 btn-3d py-4.5 text-xl"
+                : "bg-secondary text-foreground hover:bg-secondary/80"
+            }`}
           >
-            <Sparkles className="h-6 w-6" /> REVEAL ALL ROLES
+            <Sparkles className="h-5 w-5" /> REVEAL ALL ROLES DIRECTLY
           </button>
 
           {isOnline && isHost && (
@@ -1447,7 +1978,10 @@ export function InitiatorScreen() {
           )}
 
           <button
-            onClick={g.newGame}
+            onClick={() => {
+              sounds.playTap();
+              g.newGame();
+            }}
             className="mx-auto block text-xs underline underline-offset-4 font-semibold text-muted-foreground hover:text-foreground"
           >
             Start New Game

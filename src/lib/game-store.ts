@@ -55,6 +55,7 @@ type GameState = {
   customCategories: Category[]; // custom category & words database
   imposterCount: number;
   timeLimitEnabled: boolean;
+  timeLimitDuration: number; // in seconds for discussion timer
   imposterHintEnabled: boolean;
   guardianAngelEnabled: boolean;
   initiatorEnabled: boolean;
@@ -68,6 +69,7 @@ type GameState = {
   assignments: Assignment[];
   currentPlayerIndex: number;
   cardViewed: boolean; // has current player held-to-reveal at least once
+  classicAccusedPlayerName: string | null; // player accused by the group in classic mode
 
   // Online Multiplayer State
   roomId: string | null;
@@ -99,6 +101,8 @@ type GameState = {
   resetCustomCategories: () => void;
   setImposterCount: (n: number) => void;
   setTimeLimitEnabled: (b: boolean) => void;
+  setTimeLimitDuration: (d: number) => void;
+  setClassicAccusedPlayerName: (name: string | null) => void;
   setImposterHintEnabled: (b: boolean) => void;
   setGuardianAngelEnabled: (b: boolean) => void;
   setInitiatorEnabled: (b: boolean) => void;
@@ -203,6 +207,7 @@ export const useGame = create<GameState>()(
       customCategories: CATEGORIES,
       imposterCount: 1,
       timeLimitEnabled: false,
+      timeLimitDuration: 90,
       imposterHintEnabled: true,
       guardianAngelEnabled: true,
       initiatorEnabled: true,
@@ -215,6 +220,7 @@ export const useGame = create<GameState>()(
       assignments: [],
       currentPlayerIndex: 0,
       cardViewed: false,
+      classicAccusedPlayerName: null,
 
       // Online variables
       roomId: null,
@@ -337,6 +343,8 @@ export const useGame = create<GameState>()(
           });
         }
       },
+      setTimeLimitDuration: (d) => set({ timeLimitDuration: d }),
+      setClassicAccusedPlayerName: (name) => set({ classicAccusedPlayerName: name }),
       setImposterHintEnabled: (b) => {
         set({ imposterHintEnabled: b });
         if (get().gameMode === "online" && get().roomId) {
@@ -491,6 +499,7 @@ export const useGame = create<GameState>()(
           assignments,
           currentPlayerIndex: 0,
           cardViewed: false,
+          classicAccusedPlayerName: null,
         });
       },
       markViewed: () => set({ cardViewed: true }),
@@ -536,6 +545,7 @@ export const useGame = create<GameState>()(
             assignments: [],
             currentPlayerIndex: 0,
             cardViewed: false,
+            classicAccusedPlayerName: null,
           });
         }
       },
@@ -785,6 +795,7 @@ export const useGame = create<GameState>()(
         customCategories: state.customCategories,
         imposterCount: state.imposterCount,
         timeLimitEnabled: state.timeLimitEnabled,
+        timeLimitDuration: state.timeLimitDuration,
         imposterHintEnabled: state.imposterHintEnabled,
         guardianAngelEnabled: state.guardianAngelEnabled,
         initiatorEnabled: state.initiatorEnabled,

@@ -333,7 +333,13 @@ export function Lobby() {
           <ToggleRow
             icon={<AlarmClock className="h-5 w-5 text-destructive" />}
             title="TIME LIMIT"
-            subtitle={g.timeLimitEnabled ? "Enabled" : "Disabled"}
+            subtitle={
+              g.timeLimitEnabled
+                ? `${g.timeLimitDuration >= 60 ? `${Math.floor(g.timeLimitDuration / 60)}m` : ""}${
+                    g.timeLimitDuration % 60 ? ` ${g.timeLimitDuration % 60}s` : ""
+                  } discussion timer`
+                : "Disabled"
+            }
             checked={g.timeLimitEnabled}
             onChange={(b) => {
               if (isOnline && !isHost) {
@@ -342,7 +348,43 @@ export function Lobby() {
               }
               g.setTimeLimitEnabled(b);
             }}
-          />
+          >
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider block">
+                Discussion Duration:
+              </span>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { label: "1 min", secs: 60 },
+                  { label: "1.5 min", secs: 90 },
+                  { label: "2 min", secs: 120 },
+                  { label: "3 min", secs: 180 },
+                ].map((preset) => (
+                  <button
+                    key={preset.secs}
+                    type="button"
+                    onClick={() => {
+                      if (isOnline && !isHost) {
+                        toast.info("Only the Host can change this option");
+                        return;
+                      }
+                      g.setTimeLimitDuration(preset.secs);
+                      if (!g.timeLimitEnabled) {
+                        g.setTimeLimitEnabled(true);
+                      }
+                    }}
+                    className={`py-1.5 px-1 rounded-xl text-xs font-extrabold transition active:scale-95 cursor-pointer text-center ${
+                      g.timeLimitDuration === preset.secs
+                        ? "bg-pink text-white card-shadow"
+                        : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </ToggleRow>
 
           {/* Imposter Hint */}
           <ToggleRow
@@ -522,12 +564,14 @@ function ToggleRow({
   subtitle,
   checked,
   onChange,
+  children,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   checked: boolean;
   onChange: (v: boolean) => void;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl bg-card p-4 card-shadow">
@@ -549,6 +593,7 @@ function ToggleRow({
           />
         </button>
       </div>
+      {children && <div className="mt-3 pt-3 border-t border-border/60">{children}</div>}
     </div>
   );
 }
