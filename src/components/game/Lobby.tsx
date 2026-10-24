@@ -172,7 +172,7 @@ export function Lobby() {
                     onChange={(e) => setEditName(e.target.value)}
                     onBlur={saveName}
                     onKeyDown={(e) => e.key === "Enter" && saveName()}
-                    className="font-display text-lg font-bold bg-transparent border-b-2 border-primary outline-none py-0.5 max-w-[180px] text-foreground"
+                    className="font-display text-lg font-bold bg-transparent border-b-2 border-primary outline-none py-0.5 max-w-45 text-foreground"
                     autoFocus
                   />
                 ) : (
@@ -479,7 +479,7 @@ export function Lobby() {
 
       {/* Sticky Start / Waiting Bar */}
       <div className="sticky bottom-0 left-0 right-0 mt-6">
-        <div className="mx-auto max-w-md px-4 pb-4 pt-3 bg-gradient-to-t from-background via-background/95 to-transparent">
+        <div className="mx-auto max-w-md px-4 pb-4 pt-3 bg-linear-to-t from-background via-background/95 to-transparent">
           {isOnline && !isHost ? (
             <div className="rounded-2xl bg-secondary/80 py-4.5 font-display text-md font-bold text-center text-muted-foreground card-shadow animate-pulse">
               🎮 WAITING FOR HOST TO START GAME

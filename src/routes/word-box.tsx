@@ -467,7 +467,7 @@ function WordBoxComponent() {
         {!selectedCatId && (
           <div className="space-y-6">
             {/* AI Generator Banner */}
-            <div className="rounded-3xl bg-gradient-to-br from-card via-card to-secondary/30 p-5 sm:p-6 card-shadow border-2 border-primary/20 relative overflow-hidden">
+            <div className="rounded-3xl bg-linear-to-br from-card via-card to-secondary/30 p-5 sm:p-6 card-shadow border-2 border-primary/20 relative overflow-hidden">
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-pink/10 rounded-full blur-2xl pointer-events-none" />
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
                 <div className="space-y-1.5 max-w-xl">
@@ -615,7 +615,7 @@ function WordBoxComponent() {
             {/* Table Spreadsheet */}
             <div className="bg-card rounded-2xl card-shadow border border-border overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[700px]">
+                <table className="w-full text-left border-collapse min-w-175">
                   <thead>
                     <tr className="bg-secondary/60 text-muted-foreground text-xs font-extrabold uppercase tracking-wider border-b border-border">
                       <th className="py-4 px-4 w-12 text-center">

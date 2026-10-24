@@ -238,7 +238,7 @@ function ClueBoard({
                 key={pid}
                 className={`border-b border-border/40 last:border-0 ${p.eliminated ? "opacity-40 bg-destructive/5" : ""}`}
               >
-                <td className="py-2 font-bold flex items-center gap-1 pr-4 truncate max-w-[110px]">
+                <td className="py-2 font-bold flex items-center gap-1 pr-4 truncate max-w-27.5">
                   <span>{p.avatar}</span>
                   <span className="truncate">{p.name}</span>
                   {p.eliminated && (
@@ -289,7 +289,7 @@ function ChatPanel({
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col rounded-2xl bg-card card-shadow border border-border overflow-hidden min-h-[220px]">
+    <div className="w-full flex-1 flex flex-col rounded-2xl bg-card card-shadow border border-border overflow-hidden min-h-55">
       {/* Header */}
       <div className="bg-secondary/60 px-4 py-2 border-b border-border flex items-center gap-2 select-none">
         <span className="relative flex h-2.5 w-2.5">
@@ -302,7 +302,7 @@ function ChatPanel({
       </div>
 
       {/* Messages list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 max-h-[200px]">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 max-h-50">
         {chat.length === 0 ? (
           <div className="h-full flex items-center justify-center text-xs font-semibold text-muted-foreground/60 italic py-6 select-none">
             No messages yet. Chat here to identify the Imposters!
@@ -435,7 +435,7 @@ export function RevealScreen() {
       <div className="mx-auto w-full max-w-md flex-1 px-4 flex flex-col items-center justify-center pb-6">
         {/* 3D Perspective Card Container */}
         <div
-          className="relative w-full aspect-[3/4] max-h-[60vh] select-none touch-none"
+          className="relative w-full aspect-3/4 max-h-[60vh] select-none touch-none"
           style={{ perspective: "1200px" }}
           onPointerDown={startHold}
           onPointerUp={endHold}
@@ -465,7 +465,7 @@ export function RevealScreen() {
                 <h2 className="font-display text-4xl sm:text-5xl font-extrabold uppercase tracking-tight text-foreground drop-shadow-sm mt-0.5">
                   {assignment.playerName}
                 </h2>
-                <p className="mt-2 text-sm font-semibold text-foreground/80 max-w-[240px] mx-auto leading-snug">
+                <p className="mt-2 text-sm font-semibold text-foreground/80 max-w-60 mx-auto leading-snug">
                   Keep your card secret from everyone else!
                 </p>
               </div>
@@ -505,7 +505,7 @@ export function RevealScreen() {
 
               <div className="w-full flex items-center justify-center pointer-events-none">
                 {assignment.specialRole === "guardian_angel" ? (
-                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-[280px]">
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-70">
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-yellow/25 border border-yellow/50 px-3.5 py-1 text-xs font-display font-black text-foreground uppercase tracking-wider">
                       👼 GUARDIAN ANGEL
                     </div>
@@ -529,7 +529,7 @@ export function RevealScreen() {
                     )}
                   </div>
                 ) : assignment.specialRole === "initiator" ? (
-                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-[280px]">
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-70">
                     <div
                       className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider border ${
                         assignment.isImposter
@@ -562,7 +562,7 @@ export function RevealScreen() {
                     )}
                   </div>
                 ) : assignment.specialRole === "extra_voter" ? (
-                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-[280px]">
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-70">
                     <div
                       className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider border ${
                         assignment.isImposter
@@ -595,7 +595,7 @@ export function RevealScreen() {
                     )}
                   </div>
                 ) : assignment.specialRole === "bounty_hunter" ? (
-                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-[280px]">
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-70">
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 text-red-700 border border-red-300 px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider">
                       <Target className="h-4 w-4" /> BOUNTY HUNTER
                     </div>
@@ -622,7 +622,7 @@ export function RevealScreen() {
                     )}
                   </div>
                 ) : assignment.isImposter ? (
-                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-1 w-full max-w-[280px]">
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-1 w-full max-w-70">
                     <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
                       IMPOSTOR!
                     </p>
@@ -633,7 +633,7 @@ export function RevealScreen() {
                     )}
                   </div>
                 ) : (
-                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-8 py-6 text-center card-shadow w-full max-w-[280px]">
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-8 py-6 text-center card-shadow w-full max-w-70">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                       SECRET WORD
                     </p>
@@ -774,7 +774,7 @@ export function ClueScreen() {
                 {isMyTurn ? "IT'S YOUR TURN!" : `${activePlayer.name.toUpperCase()} IS TYPING...`}
               </h2>
             </div>
-            <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
+            <p className="text-xs text-muted-foreground mt-1 max-w-70">
               {isMyTurn
                 ? "Enter a one-word clue that describes your card without revealing it directly."
                 : "Wait for the active player. All clues appear instantly below."}
@@ -867,7 +867,7 @@ function OnlineDiscussScreen() {
             </span>{" "}
             starts the conversation!
           </p>
-          <p className="text-[10px] text-muted-foreground mt-1 max-w-[300px]">
+          <p className="text-[10px] text-muted-foreground mt-1 max-w-75">
             Chat, debate clues, and catch the Imposter. Press "Ready to Vote" when ready to proceed.
           </p>
         </div>
@@ -1414,7 +1414,7 @@ function ClassicDiscussScreen() {
                               : "border-border/80 bg-secondary/30 text-transparent"
                           }`}
                         >
-                          <Check className="h-3.5 w-3.5 stroke-[3]" />
+                          <Check className="h-3.5 w-3.5 stroke-3" />
                         </div>
                       </button>
                     );
