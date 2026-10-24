@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import {
-  HelpCircle,
-  Settings,
   Users,
   Globe,
   Pencil,
@@ -124,31 +122,20 @@ export function Lobby() {
     <div className="min-h-dvh bg-background pb-8">
       <div className="mx-auto max-w-md px-4 pt-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <button className="text-muted-foreground/70 hover:text-foreground" aria-label="Help">
-            <HelpCircle className="h-8 w-8" strokeWidth={2} />
-          </button>
+        <div className="relative flex items-center justify-center pt-2">
           <h1 className="font-display text-5xl leading-[0.9] font-extrabold text-center text-foreground/85 tracking-tight">
             IMPOSTER
             <br />
             <span className="text-6xl">WHO?</span>
           </h1>
-          <div className="flex items-center gap-2">
-            <Link
-              to="/word-box"
-              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-1 relative"
-              aria-label="Word Box"
-              title="Word Box"
-            >
-              <Box className="h-7 w-7" strokeWidth={2.5} />
-            </Link>
-            <button
-              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-1"
-              aria-label="Settings"
-            >
-              <Settings className="h-8 w-8" strokeWidth={2} />
-            </button>
-          </div>
+          <Link
+            to="/word-box"
+            className="absolute right-0 top-1 text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition"
+            aria-label="Word Box"
+            title="Word Box"
+          >
+            <Box className="h-7 w-7 text-foreground/80" strokeWidth={2.4} />
+          </Link>
         </div>
 
         <div className="mt-8 space-y-4">
@@ -485,18 +472,13 @@ export function Lobby() {
               🎮 WAITING FOR HOST TO START GAME
             </div>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="grid h-14 w-14 place-items-center rounded-full bg-pink text-white shadow-lg shrink-0">
-                <Crown className="h-7 w-7" />
-              </div>
-              <button
-                onClick={onStart}
-                disabled={!canStart}
-                className="flex-1 rounded-2xl bg-lime py-4 font-display text-xl font-extrabold text-foreground/90 flex items-center justify-center gap-2 btn-3d disabled:opacity-60"
-              >
-                <Play className="h-6 w-6 fill-current" /> START GAME
-              </button>
-            </div>
+            <button
+              onClick={onStart}
+              disabled={!canStart}
+              className="w-full rounded-2xl bg-lime py-4 font-display text-xl font-extrabold text-foreground/90 flex items-center justify-center gap-2 btn-3d disabled:opacity-60"
+            >
+              <Play className="h-6 w-6 fill-current" /> START GAME
+            </button>
           )}
         </div>
       </div>
