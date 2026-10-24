@@ -4,11 +4,75 @@
 class SoundManager {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
+  private unlocked: boolean = false;
+  private listenersAttached: boolean = false;
+  private readonly unlockEvents = [
+    "touchstart",
+    "touchend",
+    "pointerdown",
+    "click",
+    "keydown",
+  ] as const;
 
   constructor() {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("sws_sound_muted");
       this.muted = saved === "true";
+      this.attachUnlockListeners();
+      this.attachVisibilityListener();
+    }
+  }
+
+  private handleUnlock = () => {
+    this.unlockAudio();
+  };
+
+  private attachUnlockListeners() {
+    if (typeof window === "undefined" || this.listenersAttached || this.unlocked) return;
+    this.listenersAttached = true;
+    this.unlockEvents.forEach((event) => {
+      window.addEventListener(event, this.handleUnlock, { capture: true, passive: true });
+    });
+  }
+
+  private removeUnlockListeners() {
+    if (typeof window === "undefined" || !this.listenersAttached) return;
+    this.unlockEvents.forEach((event) => {
+      window.removeEventListener(event, this.handleUnlock, { capture: true });
+    });
+    this.listenersAttached = false;
+  }
+
+  private attachVisibilityListener() {
+    if (typeof document === "undefined") return;
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && this.ctx && this.ctx.state === "suspended") {
+        this.ctx.resume().catch(() => {});
+      }
+    });
+  }
+
+  public unlockAudio() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
+    if (!this.unlocked) {
+      try {
+        // Play 1 silent sample to completely satisfy iOS Safari Web Audio autoplay restrictions
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+        this.unlocked = true;
+        this.removeUnlockListeners();
+      } catch (_err) {
+        // Keep listeners attached if playback failed so next interaction retries
+      }
     }
   }
 
