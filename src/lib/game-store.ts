@@ -761,6 +761,23 @@ export const useGame = create<GameState>()(
     }),
     {
       name: "imposter-who-game",
+      version: 2,
+      migrate: (persistedState: unknown) => {
+        const state = (persistedState || {}) as Record<string, unknown>;
+        if (state.players && Array.isArray(state.players)) {
+          state.players = state.players.map((p: string) =>
+            typeof p === "string" && p.toLowerCase() === "subash" ? "Zoro" : p,
+          );
+        }
+        return state as GameState;
+      },
+      onRehydrateStorage: () => (state) => {
+        if (state && Array.isArray(state.players)) {
+          if (state.players.some((p) => p.toLowerCase() === "subash")) {
+            state.setPlayers(state.players.map((p) => (p.toLowerCase() === "subash" ? "Zoro" : p)));
+          }
+        }
+      },
       partialize: (state) => ({
         gameMode: state.gameMode,
         players: state.players,
