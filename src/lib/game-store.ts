@@ -198,7 +198,7 @@ export const useGame = create<GameState>()(
   persist(
     (set, get) => ({
       gameMode: "classic",
-      players: ["Yuvan", "Viswa", "Vinay", "Subash", "Abinesh", "Dhilip"],
+      players: ["Yuvan", "Viswa", "Vinay", "Zoro", "Abinesh", "Dhilip"],
       categories: ["everyday", "foods"],
       customCategories: CATEGORIES,
       imposterCount: 1,

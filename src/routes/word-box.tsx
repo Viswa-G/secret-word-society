@@ -1,13 +1,215 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
-import { useState } from "react";
+import { useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Plus, Save, RotateCcw, AlertCircle, Box } from "lucide-react";
-import type { Category, WordEntry } from "@/data/categories";
+import {
+  ArrowLeft,
+  Trash2,
+  Plus,
+  Save,
+  RotateCcw,
+  AlertCircle,
+  Box,
+  Upload,
+  Download,
+  Copy,
+  Check,
+  Sparkles,
+  FileText,
+  X,
+  FileUp,
+  Info,
+} from "lucide-react";
+import type { WordEntry } from "@/data/categories";
 
 export const Route = createFileRoute("/word-box")({
   component: WordBoxComponent,
 });
+
+// Sample Movie Dataset curated for "Imposter Who" party game
+const SAMPLE_MOVIES: WordEntry[] = [
+  { word: "Maharaja", clues: ["trashcan", "barber", "shoes"] },
+  { word: "Vikram", clues: ["mask", "black squad", "drugs"] },
+  { word: "7 Aum Arivu", clues: ["monkey", "phone parts", "bodhidharma"] },
+  { word: "Kaithi", clues: ["biryani", "lorry", "gatling gun"] },
+  { word: "Leo", clues: ["hyena", "chocolate factory", "cafe"] },
+  { word: "Chandramukhi", clues: ["painting", "snake", "guntha"] },
+  { word: "Ghilli", clues: ["kabaddi", "lighthouse", "otthukko"] },
+  { word: "Jailer", clues: ["sculpture", "crown", "tiger"] },
+  { word: "Mankatha", clues: ["cricket betting", "money bags", "police betrayal"] },
+  { word: "Baahubali", clues: ["waterfall", "giant statue", "shivudu"] },
+  { word: "Master", clues: ["archery", "kadas", "juvenile school"] },
+  { word: "Thani Oruvan", clues: ["medical scam", "bullet in chest", "scientist"] },
+  { word: "Inception", clues: ["spinning top", "dreams", "hotel hallway"] },
+  { word: "Interstellar", clues: ["black hole", "bookshelf", "ticking watch"] },
+  { word: "Titanic", clues: ["iceberg", "heart necklace", "car window"] },
+];
+
+const SAMPLE_MOVIES_JSON = JSON.stringify(SAMPLE_MOVIES, null, 2);
+
+const AI_PROMPT_TEMPLATE = `Generate the json format of the following words which has a main word and its clue seperated by commas, the first word will be the game word and rest of the words behind it will be the clue or hint words for impostors, the clue words can be upto 3 optional.
+
+Format requirements:
+- "word": The main game word (the first word in each line)
+- "clues": Array of 2 to 3 clue/hint words that follow it
+- Output ONLY valid raw JSON array of objects (no markdown wrapping, no intro, no outro).
+
+Example Output Format:
+[
+  {
+    "word": "Maharaja",
+    "clues": ["trashcan", "barber", "shoes"]
+  },
+  {
+    "word": "7 aam arivu",
+    "clues": ["monkey", "phone parts"]
+  },
+  {
+    "word": "Dragon",
+    "clues": ["exam", "break up"]
+  }
+]
+
+Words to convert:
+[PASTE YOUR WORDS HERE, FOR EXAMPLE:]
+Maharaja, trashcan, barber, shoes
+7 aam arivu, monkey, phone parts
+Dragon, exam, break up
+Retro, laugh, vel
+Jayam, vel, rabbit
+Valimai, race, drug
+Thozha, tower, wheelchair
+Raayan, fried rice, bogi`;
+
+// Tolerant JSON Parser supporting various AI formats, wrappers, and keys
+function parseWordsJson(input: string): { words: WordEntry[]; error?: string } {
+  if (!input || !input.trim()) {
+    return { words: [], error: "Input is empty" };
+  }
+
+  let text = input.trim();
+
+  // Strip markdown code fences if user copied ```json ... ```
+  if (text.startsWith("```")) {
+    text = text
+      .replace(/^```[a-zA-Z]*\n?/, "")
+      .replace(/\n?```$/, "")
+      .trim();
+  }
+
+  // Attempt standard JSON parse, with auto-fix for trailing commas
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err: unknown) {
+    try {
+      const sanitized = text
+        .replace(/,\s*([}\]])/g, "$1") // strip trailing commas
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":'); // quote bare keys
+      parsed = JSON.parse(sanitized);
+    } catch {
+      const msg = err instanceof Error ? err.message : "Syntax error";
+      return { words: [], error: `Invalid JSON syntax: ${msg}` };
+    }
+  }
+
+  // Extract raw array from root array or wrapped object ({ words: [] }, { movies: [] }, etc.)
+  let rawList: unknown[] = [];
+  if (Array.isArray(parsed)) {
+    rawList = parsed;
+  } else if (parsed && typeof parsed === "object") {
+    const record = parsed as Record<string, unknown>;
+    if (Array.isArray(record.words)) {
+      rawList = record.words;
+    } else if (Array.isArray(record.movies)) {
+      rawList = record.movies;
+    } else if (Array.isArray(record.data)) {
+      rawList = record.data;
+    } else if (Array.isArray(record.items)) {
+      rawList = record.items;
+    } else {
+      const firstArrayProp = Object.values(record).find((v) => Array.isArray(v));
+      if (firstArrayProp && Array.isArray(firstArrayProp)) {
+        rawList = firstArrayProp;
+      } else {
+        return {
+          words: [],
+          error: "JSON must be an array of objects or contain a words/movies array property.",
+        };
+      }
+    }
+  } else {
+    return { words: [], error: "JSON must be an array or object." };
+  }
+
+  if (rawList.length === 0) {
+    return { words: [], error: "No items found in the array." };
+  }
+
+  const resultWords: WordEntry[] = [];
+  const errors: string[] = [];
+
+  for (let i = 0; i < rawList.length; i++) {
+    const item = rawList[i];
+    if (!item || typeof item !== "object") continue;
+
+    const record = item as Record<string, unknown>;
+
+    // Support word / movie / title / name / film / movie_name
+    const wordVal = (
+      record.word ||
+      record.movie ||
+      record.title ||
+      record.name ||
+      record.film ||
+      record.movie_name ||
+      ""
+    )
+      .toString()
+      .trim();
+
+    if (!wordVal) {
+      errors.push(`Item #${i + 1} is missing a word/movie title.`);
+      continue;
+    }
+
+    // Support clues array or hints array or tags or hint1, hint2, hint3
+    let cluesVal: string[] = [];
+    if (Array.isArray(record.clues)) {
+      cluesVal = record.clues.map((c) => String(c).trim()).filter(Boolean);
+    } else if (Array.isArray(record.hints)) {
+      cluesVal = record.hints.map((c) => String(c).trim()).filter(Boolean);
+    } else if (Array.isArray(record.tags)) {
+      cluesVal = record.tags.map((c) => String(c).trim()).filter(Boolean);
+    } else {
+      const h1 = String(record.hint1 || record.clue1 || "").trim();
+      const h2 = String(record.hint2 || record.clue2 || "").trim();
+      const h3 = String(record.hint3 || record.clue3 || "").trim();
+      cluesVal = [h1, h2, h3].filter(Boolean);
+    }
+
+    if (cluesVal.length < 2) {
+      errors.push(
+        `"${wordVal}" has only ${cluesVal.length} clue(s). Each item needs at least 2 clues/hints.`,
+      );
+      continue;
+    }
+
+    resultWords.push({
+      word: wordVal,
+      clues: cluesVal,
+    });
+  }
+
+  if (resultWords.length === 0) {
+    return {
+      words: [],
+      error: errors[0] || "No valid words with at least 2 clues found in the JSON.",
+    };
+  }
+
+  return { words: resultWords };
+}
 
 function WordBoxComponent() {
   const g = useGame();
@@ -18,7 +220,23 @@ function WordBoxComponent() {
   const [editingWords, setEditingWords] = useState<WordEntry[]>([]);
   const [selectedRowIndexes, setSelectedRowIndexes] = useState<number[]>([]);
 
+  // Modals state
+  const [showImportModal, setShowImportModal] = useState<boolean>(false);
+  const [showAiPromptModal, setShowAiPromptModal] = useState<boolean>(false);
+  const [aiModalTab, setAiModalTab] = useState<"prompt" | "json">("prompt");
+  const [importJsonText, setImportJsonText] = useState<string>("");
+  const [importMode, setImportMode] = useState<"append" | "replace">("append");
+  const [copiedPrompt, setCopiedPrompt] = useState<boolean>(false);
+  const [copiedJson, setCopiedJson] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const selectedCategory = g.customCategories.find((c) => c.id === selectedCatId);
+
+  // Parse status for the import modal in real time
+  const parseStatus = useMemo(() => {
+    if (!importJsonText.trim()) return null;
+    return parseWordsJson(importJsonText);
+  }, [importJsonText]);
 
   // Transition to edit a specific category
   const handleSelectCategory = (catId: string) => {
@@ -157,6 +375,130 @@ function WordBoxComponent() {
     setSelectedCatId(null);
   };
 
+  // Copy helper
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      toast.success(`${label} copied to clipboard!`);
+      return true;
+    } catch {
+      toast.error("Failed to copy to clipboard.");
+      return false;
+    }
+  };
+
+  const handleCopyPrompt = async () => {
+    const ok = await copyToClipboard(AI_PROMPT_TEMPLATE, "AI Prompt Template");
+    if (ok) {
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2500);
+    }
+  };
+
+  const handleCopyJson = async () => {
+    const ok = await copyToClipboard(SAMPLE_MOVIES_JSON, "Sample Movies JSON");
+    if (ok) {
+      setCopiedJson(true);
+      setTimeout(() => setCopiedJson(false), 2500);
+    }
+  };
+
+  // Download Sample Movies as .json file
+  const handleDownloadSampleJson = () => {
+    const blob = new Blob([SAMPLE_MOVIES_JSON], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "sample-movies-format.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Downloaded sample-movies-format.json");
+  };
+
+  // Export current category words as JSON
+  const handleExportCategoryJson = () => {
+    const listToExport =
+      editingWords.length > 0 ? editingWords : selectedCategory ? selectedCategory.words : [];
+    if (listToExport.length === 0) {
+      toast.error("No words to export in this category.");
+      return;
+    }
+    const cleanList = listToExport
+      .filter((w) => w.word.trim())
+      .map((w) => ({
+        word: w.word.trim(),
+        clues: w.clues.filter((c) => c && c.trim()),
+      }));
+    const jsonStr = JSON.stringify(cleanList, null, 2);
+    copyToClipboard(jsonStr, `${selectedCategory?.name || "Category"} Words JSON`);
+  };
+
+  // Load sample movies into the import textarea
+  const handleLoadSampleToImport = () => {
+    setImportJsonText(SAMPLE_MOVIES_JSON);
+    toast.success("Loaded 15 sample movie words into import box!");
+  };
+
+  // Handle file upload (.json)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setImportJsonText(content);
+        toast.success(`Loaded "${file.name}"!`);
+      }
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read file.");
+    };
+    reader.readAsText(file);
+    // Reset file input value so re-selecting same file triggers onChange
+    e.target.value = "";
+  };
+
+  // Execute bulk import
+  const handleExecuteImport = () => {
+    if (!parseStatus || !parseStatus.words || parseStatus.words.length === 0) {
+      toast.error("Please enter valid JSON with at least one word.");
+      return;
+    }
+
+    const imported = parseStatus.words.map((w) => ({
+      word: w.word,
+      clues: [w.clues[0] || "", w.clues[1] || "", w.clues[2] || ""],
+    }));
+
+    if (importMode === "append") {
+      setEditingWords((prev) => [...prev, ...imported]);
+      toast.success(`Added ${imported.length} words to list! Click 'Save Changes' to update game.`);
+    } else {
+      setEditingWords(imported);
+      toast.success(
+        `Replaced category with ${imported.length} imported words! Click 'Save Changes' to update game.`,
+      );
+    }
+
+    setShowImportModal(false);
+    setImportJsonText("");
+  };
+
   return (
     <div className="min-h-dvh bg-background pb-12 animate-in fade-in duration-200">
       <div className="mx-auto max-w-4xl px-4 pt-4">
@@ -202,35 +544,105 @@ function WordBoxComponent() {
 
         {/* STATE 1: Select Category */}
         {!selectedCatId && (
-          <div className="space-y-4">
-            <h2 className="font-display text-lg font-bold text-foreground/80">
-              SELECT A CATEGORY TO EDIT
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {g.customCategories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => handleSelectCategory(c.id)}
-                  className="flex items-center justify-between rounded-2xl bg-card p-5 card-shadow border border-border/60 hover:border-primary/30 hover:scale-[1.01] active:scale-[0.99] transition text-left group cursor-pointer"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-4xl bg-secondary rounded-2xl h-14 w-14 flex items-center justify-center shrink-0">
-                      {c.emoji}
-                    </span>
-                    <div>
-                      <h3 className="font-display text-lg font-bold text-foreground group-hover:text-primary transition">
-                        {c.name}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {c.words.length} words configured
-                      </p>
-                    </div>
+          <div className="space-y-6">
+            {/* AI Generator & Movie Format Banner */}
+            <div className="rounded-3xl bg-gradient-to-br from-card via-card to-secondary/30 p-5 sm:p-6 card-shadow border-2 border-primary/20 relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-pink/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div className="space-y-1.5 max-w-xl">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-pink/10 px-3 py-1 text-xs font-extrabold text-pink">
+                    <Sparkles className="h-3.5 w-3.5" /> AI WORDLIST ASSISTANT
                   </div>
-                  <span className="rounded-full bg-secondary p-1.5 text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition">
-                    <Plus className="h-5 w-5" strokeWidth={2.5} />
-                  </span>
-                </button>
-              ))}
+                  <h2 className="font-display text-xl sm:text-2xl font-extrabold text-foreground">
+                    Bulk Generate Custom Movies & Clues
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Copy our formatted AI prompt and sample movie JSON to generate dozens of custom
+                    movies with ChatGPT, Claude, or Gemini in seconds!
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <button
+                    onClick={handleCopyPrompt}
+                    className="flex-1 sm:flex-none rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-3 font-display text-xs font-extrabold flex items-center justify-center gap-2 btn-3d active:scale-95 transition cursor-pointer"
+                  >
+                    {copiedPrompt ? (
+                      <>
+                        <Check className="h-4 w-4" /> COPIED PROMPT!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" /> COPY AI PROMPT
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleCopyJson}
+                    className="flex-1 sm:flex-none rounded-2xl bg-secondary hover:bg-secondary-foreground/10 px-4 py-3 font-display text-xs font-extrabold text-foreground flex items-center justify-center gap-2 active:scale-95 transition cursor-pointer border border-border"
+                  >
+                    {copiedJson ? (
+                      <>
+                        <Check className="h-4 w-4 text-emerald-500" /> COPIED JSON!
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4 text-pink" /> COPY MOVIE JSON
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setAiModalTab("prompt");
+                      setShowAiPromptModal(true);
+                    }}
+                    className="w-full sm:w-auto rounded-2xl bg-secondary/60 hover:bg-secondary px-3.5 py-3 font-display text-xs font-extrabold text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Sparkles className="h-4 w-4 text-yellow" /> VIEW FORMAT GUIDE
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Categories Grid */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-lg font-bold text-foreground/80">
+                  SELECT A CATEGORY TO EDIT
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  {g.customCategories.length} categories available
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {g.customCategories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => handleSelectCategory(c.id)}
+                    className="flex items-center justify-between rounded-2xl bg-card p-5 card-shadow border border-border/60 hover:border-primary/30 hover:scale-[1.01] active:scale-[0.99] transition text-left group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-4xl bg-secondary rounded-2xl h-14 w-14 flex items-center justify-center shrink-0">
+                        {c.emoji}
+                      </span>
+                      <div>
+                        <h3 className="font-display text-lg font-bold text-foreground group-hover:text-primary transition">
+                          {c.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {c.words.length} words configured
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-secondary p-1.5 text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition">
+                      <Plus className="h-5 w-5" strokeWidth={2.5} />
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -239,7 +651,7 @@ function WordBoxComponent() {
         {selectedCatId && selectedCategory && (
           <div className="space-y-4">
             {/* Editor Top Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card p-4 rounded-2xl card-shadow border border-border/80">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-4 rounded-2xl card-shadow border border-border/80">
               <div className="flex items-center gap-3">
                 <span className="text-3xl bg-secondary h-12 w-12 rounded-xl flex items-center justify-center">
                   {selectedCategory.emoji}
@@ -248,22 +660,51 @@ function WordBoxComponent() {
                   <h2 className="font-display text-xl font-extrabold text-foreground">
                     {selectedCategory.name}
                   </h2>
-                  <p className="text-xs text-muted-foreground">Editing words & hints</p>
+                  <p className="text-xs text-muted-foreground">
+                    {editingWords.length} words & hints in list
+                  </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={handleAddRow}
-                  className="flex-1 sm:flex-none rounded-xl bg-secondary hover:bg-secondary-foreground/10 px-3.5 py-2.5 font-display text-xs font-extrabold text-foreground flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+                  className="rounded-xl bg-secondary hover:bg-secondary-foreground/10 px-3.5 py-2.5 font-display text-xs font-extrabold text-foreground flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
                 >
                   <Plus className="h-4 w-4" /> ADD WORD
+                </button>
+
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-3.5 py-2.5 font-display text-xs font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+                  title="Bulk import words from JSON or file"
+                >
+                  <Upload className="h-4 w-4" /> IMPORT JSON
+                </button>
+
+                <button
+                  onClick={handleExportCategoryJson}
+                  className="rounded-xl bg-secondary hover:bg-secondary-foreground/10 px-3 py-2.5 font-display text-xs font-extrabold text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer border border-border/60"
+                  title="Copy current category words as JSON"
+                >
+                  <Download className="h-4 w-4" /> EXPORT
+                </button>
+
+                <button
+                  onClick={() => {
+                    setAiModalTab("prompt");
+                    setShowAiPromptModal(true);
+                  }}
+                  className="rounded-xl bg-secondary hover:bg-secondary-foreground/10 px-3 py-2.5 font-display text-xs font-extrabold text-pink flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer border border-border/60"
+                  title="View AI Prompt & Sample Format"
+                >
+                  <Sparkles className="h-4 w-4" /> AI FORMAT
                 </button>
 
                 {selectedRowIndexes.length > 0 && (
                   <button
                     onClick={handleDeleteSelected}
-                    className="flex-1 sm:flex-none rounded-xl bg-destructive hover:bg-destructive/95 text-destructive-foreground px-3.5 py-2.5 font-display text-xs font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+                    className="rounded-xl bg-destructive hover:bg-destructive/95 text-destructive-foreground px-3.5 py-2.5 font-display text-xs font-extrabold flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
                   >
                     <Trash2 className="h-4 w-4" /> DELETE ({selectedRowIndexes.length})
                   </button>
@@ -271,7 +712,7 @@ function WordBoxComponent() {
 
                 <button
                   onClick={handleSaveChanges}
-                  className="flex-1 sm:flex-none rounded-xl bg-yellow hover:bg-yellow/90 px-4 py-2.5 font-display text-xs font-extrabold text-foreground flex items-center justify-center gap-1.5 btn-3d active:scale-95 transition cursor-pointer"
+                  className="rounded-xl bg-yellow hover:bg-yellow/90 px-4 py-2.5 font-display text-xs font-extrabold text-foreground flex items-center justify-center gap-1.5 btn-3d active:scale-95 transition cursor-pointer"
                 >
                   <Save className="h-4 w-4" /> SAVE CHANGES
                 </button>
@@ -295,7 +736,7 @@ function WordBoxComponent() {
                           className="h-4.5 w-4.5 rounded border-border cursor-pointer accent-primary"
                         />
                       </th>
-                      <th className="py-4 px-4">Word</th>
+                      <th className="py-4 px-4">Word / Movie</th>
                       <th className="py-4 px-4">Hint 1</th>
                       <th className="py-4 px-4">Hint 2</th>
                       <th className="py-4 px-4">Hint 3 (Optional)</th>
@@ -310,7 +751,6 @@ function WordBoxComponent() {
                       const isClue2Empty = !w.clues[1]?.trim();
                       const hasInputs = w.word.trim() || w.clues.some((c) => c && c.trim());
 
-                      // Show validation highlights if they started typing something in the row, but didn't finish required fields
                       const showValidationError =
                         hasInputs && (isWordEmpty || isClue1Empty || isClue2Empty);
 
@@ -341,7 +781,7 @@ function WordBoxComponent() {
                               <input
                                 value={w.word}
                                 onChange={(e) => handleCellChange(idx, "word", e.target.value)}
-                                placeholder="Word name"
+                                placeholder="Word / Movie title"
                                 className={`w-full bg-background/50 rounded-xl px-3 py-2 text-sm font-semibold outline-none border focus:border-primary focus:bg-background transition ${
                                   showValidationError && isWordEmpty
                                     ? "border-destructive focus:border-destructive ring-1 ring-destructive/20"
@@ -407,10 +847,24 @@ function WordBoxComponent() {
                       <tr>
                         <td colSpan={6} className="py-12 text-center text-muted-foreground">
                           <AlertCircle className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                          <p className="font-bold">No words in this category</p>
-                          <p className="text-xs">
-                            Click "Add Word" to enter custom words and clues.
+                          <p className="font-bold text-foreground">No words in this category</p>
+                          <p className="text-xs mb-4">
+                            Add words manually or use Bulk JSON Import to add dozens in seconds.
                           </p>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={handleAddRow}
+                              className="rounded-xl bg-secondary hover:bg-secondary/80 px-3.5 py-2 text-xs font-bold text-foreground cursor-pointer"
+                            >
+                              <Plus className="h-3.5 w-3.5 inline mr-1" /> Add Word
+                            </button>
+                            <button
+                              onClick={() => setShowImportModal(true)}
+                              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-3.5 py-2 text-xs font-bold cursor-pointer"
+                            >
+                              <Upload className="h-3.5 w-3.5 inline mr-1" /> Import JSON
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -426,7 +880,8 @@ function WordBoxComponent() {
                 <p className="font-bold text-foreground/80 mb-0.5">Editing Guidelines</p>
                 <ul className="list-disc pl-4 space-y-1">
                   <li>
-                    Each row must have a valid Word name and at least two hints (Hint 1 & Hint 2).
+                    Each row must have a valid Word/Movie title and at least two hints (Hint 1 &
+                    Hint 2).
                   </li>
                   <li>
                     Clues/hints should be alternative tricky tags or hints that refer to the word.
@@ -434,8 +889,13 @@ function WordBoxComponent() {
                   </li>
                   <li>Hint 3 is optional. If left blank, it won't be used.</li>
                   <li>
-                    Click <strong>Save Changes</strong> at the top right to load the modified
-                    wordlist into the game.
+                    You can quickly copy the <strong>AI Format</strong> to have ChatGPT generate
+                    dozens of movies, then click <strong>IMPORT JSON</strong> to add them all at
+                    once.
+                  </li>
+                  <li>
+                    Click <strong>Save Changes</strong> at the top right to store the updated
+                    wordlist.
                   </li>
                 </ul>
               </div>
@@ -443,6 +903,400 @@ function WordBoxComponent() {
           </div>
         )}
       </div>
+
+      {/* ========================================================= */}
+      {/* MODAL 1: BULK JSON IMPORT                                */}
+      {/* ========================================================= */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl bg-card rounded-3xl border-2 border-border card-shadow p-6 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-2xl bg-primary/10 text-primary">
+                  <Upload className="h-6 w-6" />
+                </span>
+                <div>
+                  <h3 className="font-display text-xl font-extrabold text-foreground">
+                    Bulk Import Words & Hints
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Target:{" "}
+                    <strong className="text-foreground">
+                      {selectedCategory?.emoji} {selectedCategory?.name}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="rounded-full p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition cursor-pointer"
+                aria-label="Close import dialog"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-4 space-y-4 overflow-y-auto flex-1 pr-1">
+              {/* Quick Actions Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".json,application/json"
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-xl bg-secondary hover:bg-secondary/80 px-3 py-1.5 text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer border border-border"
+                  >
+                    <FileUp className="h-3.5 w-3.5 text-pink" /> Upload .json File
+                  </button>
+
+                  <button
+                    onClick={handleLoadSampleToImport}
+                    className="rounded-xl bg-secondary hover:bg-secondary/80 px-3 py-1.5 text-xs font-bold text-foreground flex items-center gap-1.5 cursor-pointer border border-border"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-yellow" /> Load Movie Sample
+                  </button>
+                </div>
+
+                {importJsonText && (
+                  <button
+                    onClick={() => setImportJsonText("")}
+                    className="text-xs text-muted-foreground hover:text-destructive cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* JSON Textarea */}
+              <div className="relative">
+                <textarea
+                  value={importJsonText}
+                  onChange={(e) => setImportJsonText(e.target.value)}
+                  placeholder={`[\n  {\n    "word": "Movie Name",\n    "clues": ["hint 1", "hint 2"]\n  }\n]`}
+                  rows={10}
+                  className="w-full font-mono text-xs p-4 rounded-2xl bg-background border border-border/80 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition resize-none"
+                  spellCheck={false}
+                />
+              </div>
+
+              {/* Live Validation & Preview Box */}
+              {!importJsonText.trim() ? (
+                <div className="rounded-2xl bg-secondary/50 p-3.5 text-xs text-muted-foreground flex items-center gap-2.5 border border-border/60">
+                  <Info className="h-4 w-4 shrink-0 text-muted-foreground/80" />
+                  <span>
+                    Paste JSON generated from ChatGPT/Gemini, or click{" "}
+                    <strong>"Load Movie Sample"</strong> to try test data.
+                  </span>
+                </div>
+              ) : parseStatus?.error ? (
+                <div className="rounded-2xl bg-destructive/10 border border-destructive/20 p-3.5 text-xs text-destructive flex items-start gap-2.5">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Format Error: </span>
+                    {parseStatus.error}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-3.5 text-xs text-emerald-600 dark:text-emerald-400 flex items-start gap-2.5">
+                  <Check className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">
+                      ✓ Valid Format: {parseStatus?.words.length} words detected!
+                    </p>
+                    <p className="text-[11px] opacity-90 line-clamp-1">
+                      Preview:{" "}
+                      {parseStatus?.words
+                        .slice(0, 4)
+                        .map((w) => w.word)
+                        .join(", ")}
+                      {(parseStatus?.words.length ?? 0) > 4
+                        ? ` and ${(parseStatus?.words.length ?? 0) - 4} more`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Import Mode Radio Group */}
+              <div className="pt-2">
+                <label className="text-xs font-bold text-foreground block mb-2">
+                  IMPORT DESTINATION MODE:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition ${
+                      importMode === "append"
+                        ? "bg-primary/5 border-primary font-bold text-foreground"
+                        : "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary/60"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="importMode"
+                      value="append"
+                      checked={importMode === "append"}
+                      onChange={() => setImportMode("append")}
+                      className="accent-primary"
+                    />
+                    <div className="text-xs">
+                      <div>Append to existing words</div>
+                      <div className="text-[10px] font-normal opacity-80">
+                        Keeps current {editingWords.length} words and adds new ones
+                      </div>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition ${
+                      importMode === "replace"
+                        ? "bg-primary/5 border-primary font-bold text-foreground"
+                        : "bg-secondary/40 border-border text-muted-foreground hover:bg-secondary/60"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="importMode"
+                      value="replace"
+                      checked={importMode === "replace"}
+                      onChange={() => setImportMode("replace")}
+                      className="accent-primary"
+                    />
+                    <div className="text-xs">
+                      <div>Replace all words</div>
+                      <div className="text-[10px] font-normal opacity-80">
+                        Overwrites all words in this category
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-4 border-t border-border flex items-center justify-between gap-3">
+              <button
+                onClick={() => {
+                  setAiModalTab("json");
+                  setShowAiPromptModal(true);
+                }}
+                className="text-xs font-bold text-pink hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles className="h-3.5 w-3.5" /> View Sample JSON Format
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="rounded-xl px-4 py-2.5 text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExecuteImport}
+                  disabled={!parseStatus || !parseStatus.words || parseStatus.words.length === 0}
+                  className="rounded-xl bg-yellow hover:bg-yellow/90 disabled:opacity-50 disabled:cursor-not-allowed text-foreground px-5 py-2.5 font-display text-xs font-extrabold flex items-center gap-1.5 btn-3d active:scale-95 transition cursor-pointer"
+                >
+                  <Upload className="h-4 w-4" /> IMPORT{" "}
+                  {parseStatus?.words?.length ? `(${parseStatus.words.length})` : ""} WORDS
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL 2: AI PROMPT & SAMPLE DATA FORMAT GUIDE            */}
+      {/* ========================================================= */}
+      {showAiPromptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl bg-card rounded-3xl border-2 border-border card-shadow p-6 overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-border">
+              <div className="flex items-center gap-3">
+                <span className="p-2.5 rounded-2xl bg-pink/10 text-pink">
+                  <Sparkles className="h-6 w-6" />
+                </span>
+                <div>
+                  <h3 className="font-display text-xl font-extrabold text-foreground">
+                    AI Wordlist Prompt & Format
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Copy and give this to ChatGPT, Claude, or Gemini
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowAiPromptModal(false)}
+                className="rounded-full p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition cursor-pointer"
+                aria-label="Close format dialog"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-border mt-3">
+              <button
+                onClick={() => setAiModalTab("prompt")}
+                className={`py-2.5 px-4 font-display text-xs font-extrabold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+                  aiModalTab === "prompt"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5" /> 1. AI PROMPT TEMPLATE
+              </button>
+              <button
+                onClick={() => setAiModalTab("json")}
+                className={`py-2.5 px-4 font-display text-xs font-extrabold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+                  aiModalTab === "json"
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" /> 2. SAMPLE MOVIE JSON
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="py-4 space-y-4 overflow-y-auto flex-1 pr-1">
+              {aiModalTab === "prompt" && (
+                <div className="space-y-3">
+                  <div className="rounded-2xl bg-secondary/50 p-3.5 text-xs text-muted-foreground">
+                    <p className="font-bold text-foreground mb-1">How to use this prompt:</p>
+                    <ol className="list-decimal pl-4 space-y-1">
+                      <li>Click "Copy Complete AI Prompt" below.</li>
+                      <li>Paste it into ChatGPT, Gemini, or Claude.</li>
+                      <li>
+                        Add or replace with your own list of comma-separated movies &amp; clues
+                        (e.g. <em>Movie Name, hint 1, hint 2, hint 3</em>).
+                      </li>
+                      <li>Copy the JSON output from AI and paste into our "IMPORT JSON" box!</li>
+                    </ol>
+                  </div>
+
+                  <div className="relative rounded-2xl bg-background border border-border/80 overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-secondary/40 border-b border-border text-[11px] font-bold text-muted-foreground">
+                      <span>AI PROMPT TEMPLATE</span>
+                      <button
+                        onClick={handleCopyPrompt}
+                        className="flex items-center gap-1 text-primary hover:underline cursor-pointer"
+                      >
+                        {copiedPrompt ? (
+                          <>
+                            <Check className="h-3.5 w-3.5" /> Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <pre className="p-4 text-xs font-mono text-foreground whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                      {AI_PROMPT_TEMPLATE}
+                    </pre>
+                  </div>
+
+                  <button
+                    onClick={handleCopyPrompt}
+                    className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground py-3 font-display text-xs font-extrabold flex items-center justify-center gap-2 btn-3d active:scale-95 transition cursor-pointer"
+                  >
+                    {copiedPrompt ? (
+                      <>
+                        <Check className="h-4 w-4" /> PROMPT COPIED TO CLIPBOARD!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" /> COPY COMPLETE AI PROMPT
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {aiModalTab === "json" && (
+                <div className="space-y-3">
+                  <div className="rounded-2xl bg-secondary/50 p-3.5 text-xs text-muted-foreground">
+                    <p className="font-bold text-foreground mb-1">Movie JSON Schema:</p>
+                    <p>
+                      Each object must have a <code>"word"</code> (the movie title) and a{" "}
+                      <code>"clues"</code> array with at least 2 tricky imposter hints.
+                    </p>
+                  </div>
+
+                  <div className="relative rounded-2xl bg-background border border-border/80 overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-secondary/40 border-b border-border text-[11px] font-bold text-muted-foreground">
+                      <span>SAMPLE MOVIES DATASET (15 MOVIES)</span>
+                      <button
+                        onClick={handleCopyJson}
+                        className="flex items-center gap-1 text-primary hover:underline cursor-pointer"
+                      >
+                        {copiedJson ? (
+                          <>
+                            <Check className="h-3.5 w-3.5" /> Copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <pre className="p-4 text-xs font-mono text-foreground whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+                      {SAMPLE_MOVIES_JSON}
+                    </pre>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <button
+                      onClick={handleCopyJson}
+                      className="flex-1 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground py-3 font-display text-xs font-extrabold flex items-center justify-center gap-2 btn-3d active:scale-95 transition cursor-pointer"
+                    >
+                      {copiedJson ? (
+                        <>
+                          <Check className="h-4 w-4" /> JSON COPIED!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" /> COPY SAMPLE JSON
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={handleDownloadSampleJson}
+                      className="rounded-2xl bg-secondary hover:bg-secondary/80 text-foreground py-3 px-4 font-display text-xs font-extrabold flex items-center justify-center gap-2 border border-border active:scale-95 transition cursor-pointer"
+                    >
+                      <Download className="h-4 w-4 text-pink" /> DOWNLOAD .JSON
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-4 border-t border-border flex items-center justify-end">
+              <button
+                onClick={() => setShowAiPromptModal(false)}
+                className="rounded-xl bg-secondary hover:bg-secondary/80 px-5 py-2.5 text-xs font-bold text-foreground cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
