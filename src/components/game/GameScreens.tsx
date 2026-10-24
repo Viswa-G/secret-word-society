@@ -25,6 +25,8 @@ import {
 import { useGame, type Player, type ChatMessage, type Assignment } from "@/lib/game-store";
 import { sounds } from "@/lib/sounds";
 import { toast } from "sonner";
+import { TimerModal } from "@/components/game/TimerModal";
+import { formatDuration } from "@/lib/utils";
 
 function LogoBadge() {
   return (
@@ -927,6 +929,7 @@ function ClassicDiscussScreen() {
   const [timeLeft, setTimeLeft] = useState(() => g.timeLimitDuration || 90);
   const [isRunning, setIsRunning] = useState(true);
   const [isAccusing, setIsAccusing] = useState(false);
+  const [isSettingTimer, setIsSettingTimer] = useState(false);
   const [selectedAccused, setSelectedAccused] = useState<Assignment[]>([]);
   const [suspenseState, setSuspenseState] = useState<"idle" | "drumroll" | "revealed">("idle");
 
@@ -1064,14 +1067,24 @@ function ClassicDiscussScreen() {
             </div>
 
             {/* Big Timer Digits */}
-            <div className="py-2">
+            <div
+              className="py-2 cursor-pointer group select-none"
+              onClick={() => {
+                sounds.playTap();
+                setIsSettingTimer(true);
+              }}
+              title="Tap to change timer"
+            >
               <span
-                className={`font-display text-5xl sm:text-6xl font-black tracking-tight ${
+                className={`font-display text-5xl sm:text-6xl font-black tracking-tight group-hover:opacity-85 inline-block transition ${
                   isExpired ? "text-destructive" : isUrgent ? "text-orange-600" : "text-foreground"
                 }`}
               >
                 {formattedTime}
               </span>
+              <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mt-0.5 group-hover:text-pink transition">
+                Tap to adjust timer ⏱️
+              </p>
               {isExpired && (
                 <p className="text-xs font-black text-destructive uppercase tracking-wider mt-1">
                   ⏰ TIME'S UP! CAST YOUR VOTES!
@@ -1079,12 +1092,12 @@ function ClassicDiscussScreen() {
               )}
             </div>
 
-            {/* Timer Controls: Play/Pause, +30s, Reset */}
+            {/* Timer Controls: Play/Pause, +30s, Set, Reset */}
             <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-border/50">
               <button
                 type="button"
                 onClick={handleToggleTimer}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 font-display font-extrabold text-xs text-foreground card-shadow active:scale-95 transition"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-secondary hover:bg-secondary/80 font-display font-extrabold text-xs text-foreground card-shadow active:scale-95 transition"
               >
                 {isRunning ? (
                   <>
@@ -1101,9 +1114,22 @@ function ClassicDiscussScreen() {
               <button
                 type="button"
                 onClick={() => handleAddTime(30)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-lime hover:bg-lime/90 font-display font-black text-xs text-foreground card-shadow active:scale-95 transition"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-lime hover:bg-lime/90 font-display font-black text-xs text-foreground card-shadow active:scale-95 transition"
               >
                 <Plus className="h-4 w-4" strokeWidth={3} /> +30s
+              </button>
+
+              {/* Set Timer Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  setIsSettingTimer(true);
+                }}
+                title="Change timer duration"
+                className="flex items-center gap-1 px-3 py-2 rounded-xl bg-secondary hover:bg-secondary/80 font-display font-black text-xs text-foreground card-shadow active:scale-95 transition"
+              >
+                <Clock className="h-3.5 w-3.5 text-pink" /> Set
               </button>
 
               <button
@@ -1462,6 +1488,22 @@ function ClassicDiscussScreen() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Set Timer Modal */}
+      {isSettingTimer && (
+        <TimerModal
+          onClose={() => setIsSettingTimer(false)}
+          initialDuration={timeLeft > 0 ? timeLeft : g.timeLimitDuration || 90}
+          title="Adjust Discussion Timer"
+          showToggle={false}
+          onSave={(duration) => {
+            setTimeLeft(duration);
+            g.setTimeLimitDuration(duration);
+            setIsRunning(true);
+            toast.success(`Timer set to ${formatDuration(duration)}!`);
+          }}
+        />
       )}
     </div>
   );

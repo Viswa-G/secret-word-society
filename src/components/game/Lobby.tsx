@@ -22,8 +22,11 @@ import {
 import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
 import { toast } from "sonner";
+import { sounds } from "@/lib/sounds";
+import { TimerModal } from "@/components/game/TimerModal";
+import { formatDuration } from "@/lib/utils";
 
-type Sheet = null | "players" | "categories" | "imposters";
+type Sheet = null | "players" | "categories" | "imposters" | "timer";
 
 const AVATARS = [
   "🐱",
@@ -316,15 +319,13 @@ export function Lobby() {
             </p>
           </SheetRow>
 
-          {/* Time Limit */}
+          {/* Discussion Timer */}
           <ToggleRow
             icon={<AlarmClock className="h-5 w-5 text-destructive" />}
-            title="TIME LIMIT"
+            title="DISCUSSION TIMER"
             subtitle={
               g.timeLimitEnabled
-                ? `${g.timeLimitDuration >= 60 ? `${Math.floor(g.timeLimitDuration / 60)}m` : ""}${
-                    g.timeLimitDuration % 60 ? ` ${g.timeLimitDuration % 60}s` : ""
-                  } discussion timer`
+                ? `${formatDuration(g.timeLimitDuration)} discussion timer`
                 : "Disabled"
             }
             checked={g.timeLimitEnabled}
@@ -333,42 +334,72 @@ export function Lobby() {
                 toast.info("Only the Host can change this option");
                 return;
               }
+              sounds.playTap();
               g.setTimeLimitEnabled(b);
             }}
           >
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider block">
-                Discussion Duration:
-              </span>
+            <div className="space-y-2 pt-0.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider block">
+                  Quick Timing:
+                </span>
+                {g.timeLimitEnabled && (
+                  <span className="text-xs font-black text-pink bg-pink/10 border border-pink/30 px-2.5 py-0.5 rounded-full">
+                    ⏱️ {formatDuration(g.timeLimitDuration)}
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { label: "1 min", secs: 60 },
-                  { label: "1.5 min", secs: 90 },
-                  { label: "2 min", secs: 120 },
-                  { label: "3 min", secs: 180 },
-                ].map((preset) => (
-                  <button
-                    key={preset.secs}
-                    type="button"
-                    onClick={() => {
-                      if (isOnline && !isHost) {
-                        toast.info("Only the Host can change this option");
-                        return;
-                      }
-                      g.setTimeLimitDuration(preset.secs);
-                      if (!g.timeLimitEnabled) {
-                        g.setTimeLimitEnabled(true);
-                      }
-                    }}
-                    className={`py-1.5 px-1 rounded-xl text-xs font-extrabold transition active:scale-95 cursor-pointer text-center ${
-                      g.timeLimitDuration === preset.secs
-                        ? "bg-pink text-white card-shadow"
-                        : "bg-secondary text-foreground hover:bg-secondary/80 border border-border"
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
+                  { label: "5 min", secs: 300 },
+                  { label: "10 min", secs: 600 },
+                  { label: "15 min", secs: 900 },
+                ].map((preset) => {
+                  const isSelected = g.timeLimitEnabled && g.timeLimitDuration === preset.secs;
+                  return (
+                    <button
+                      key={preset.secs}
+                      type="button"
+                      onClick={() => {
+                        if (isOnline && !isHost) {
+                          toast.info("Only the Host can change this option");
+                          return;
+                        }
+                        sounds.playTap();
+                        g.setTimeLimitDuration(preset.secs);
+                        if (!g.timeLimitEnabled) {
+                          g.setTimeLimitEnabled(true);
+                        }
+                      }}
+                      className={`py-2 px-1 rounded-xl text-xs font-extrabold transition active:scale-95 cursor-pointer text-center ${
+                        isSelected
+                          ? "bg-pink text-white card-shadow scale-102"
+                          : "bg-secondary text-foreground/80 hover:bg-secondary/80 border border-border"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isOnline && !isHost) {
+                      toast.info("Only the Host can change this option");
+                      return;
+                    }
+                    sounds.playTap();
+                    setSheet("timer");
+                  }}
+                  className={`py-2 px-1 rounded-xl text-xs font-extrabold transition active:scale-95 cursor-pointer text-center flex items-center justify-center gap-1 ${
+                    g.timeLimitEnabled && ![300, 600, 900].includes(g.timeLimitDuration)
+                      ? "bg-pink text-white card-shadow scale-102"
+                      : "bg-secondary text-foreground/80 hover:bg-secondary/80 border border-border"
+                  }`}
+                >
+                  Custom
+                </button>
               </div>
             </div>
           </ToggleRow>
@@ -488,6 +519,22 @@ export function Lobby() {
       )}
       {sheet === "categories" && <CategoriesSheet onClose={() => setSheet(null)} />}
       {sheet === "imposters" && <ImpostersSheet onClose={() => setSheet(null)} />}
+      {sheet === "timer" && (
+        <TimerModal
+          onClose={() => setSheet(null)}
+          initialDuration={g.timeLimitDuration}
+          initialEnabled={g.timeLimitEnabled}
+          onSave={(duration, enabled) => {
+            g.setTimeLimitDuration(duration);
+            g.setTimeLimitEnabled(enabled);
+            toast.success(
+              enabled
+                ? `Discussion timer set to ${formatDuration(duration)}`
+                : "Discussion timer disabled",
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
