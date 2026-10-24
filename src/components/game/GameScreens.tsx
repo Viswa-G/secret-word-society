@@ -1005,11 +1005,14 @@ function ClassicDiscussScreen() {
     setSuspenseState("drumroll");
     window.setTimeout(() => {
       setSuspenseState("revealed");
-      const anyImposter = selectedAccused.some((a) => a.isImposter);
-      if (anyImposter) {
+      const caughtCount = selectedAccused.filter((a) => a.isImposter).length;
+      const allCaught = caughtCount === actualImposterCount;
+      if (allCaught) {
         sounds.playVictory();
+        g.recordWin("crew");
       } else {
         sounds.playDefeat();
+        g.recordWin("imposter");
       }
       g.setClassicAccusedPlayerNames(selectedAccused.map((a) => a.playerName));
     }, 700);
@@ -2035,6 +2038,66 @@ function ClassicResultScreen() {
         {/* Special Roles Reveal */}
         <div>
           <SpecialRolesReveal assignments={g.assignments} />
+        </div>
+
+        {/* Session Scoreboard */}
+        <div className="rounded-2xl bg-card p-4 card-shadow border border-border/80">
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-xs font-black tracking-wider uppercase text-muted-foreground flex items-center gap-1.5">
+              🏆 SESSION SCOREBOARD
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                g.resetScore();
+              }}
+              className="text-[11px] font-bold text-muted-foreground/70 hover:text-foreground underline underline-offset-2"
+            >
+              Reset
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="rounded-xl bg-lime/15 border border-lime/30 p-2.5">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase block">
+                Crewmates
+              </span>
+              <span className="font-display text-2xl font-black text-foreground">
+                {g.score.crewWins}
+              </span>
+            </div>
+            <div className="rounded-xl bg-pink/15 border border-pink/30 p-2.5">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase block">
+                Impostors
+              </span>
+              <span className="font-display text-2xl font-black text-foreground">
+                {g.score.imposterWins}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-border/40">
+            <span className="text-[10px] font-bold text-muted-foreground">Adjust Round:</span>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                g.recordWin("crew");
+              }}
+              className="px-2 py-0.5 rounded-md bg-secondary text-[11px] font-black text-foreground hover:bg-secondary/80 active:scale-95 transition"
+            >
+              +1 Crew
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                g.recordWin("imposter");
+              }}
+              className="px-2 py-0.5 rounded-md bg-secondary text-[11px] font-black text-foreground hover:bg-secondary/80 active:scale-95 transition"
+            >
+              +1 Impostor
+            </button>
+          </div>
         </div>
 
         {/* Quick Rematch & Navigation */}

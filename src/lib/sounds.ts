@@ -1,5 +1,6 @@
 // Web Audio API Sound Effects Manager for Secret Word Society
 // 100% offline, zero external asset dependencies, zero network latency
+import { haptics } from "./haptics";
 
 class SoundManager {
   private ctx: AudioContext | null = null;
@@ -110,6 +111,7 @@ class SoundManager {
 
   // 1. Smooth card flip whoosh sound
   public playCardFlip() {
+    haptics.cardFlip();
     if (this.muted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -139,6 +141,7 @@ class SoundManager {
 
   // 2. Soft wooden tick for countdown
   public playTick() {
+    haptics.tick();
     if (this.muted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -167,6 +170,7 @@ class SoundManager {
 
   // 3. Time's up chime / buzzer
   public playBuzzer() {
+    haptics.buzzer();
     if (this.muted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -198,6 +202,7 @@ class SoundManager {
 
   // 4. Tension-building suspense drumroll
   public playDrumroll() {
+    haptics.drumroll();
     if (this.muted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -227,6 +232,7 @@ class SoundManager {
 
   // 5. Victory Fanfare (Major Arpeggio C5 -> E5 -> G5 -> C6)
   public playVictory() {
+    haptics.victory();
     if (this.muted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -259,6 +265,7 @@ class SoundManager {
 
   // 6. Defeat / Imposter Escape (Dramatic Minor Chord F4 -> Eb4 -> D4 -> C4)
   public playDefeat() {
+    haptics.defeat();
     if (this.muted) return;
     const ctx = this.getContext();
     if (!ctx) return;
@@ -291,6 +298,7 @@ class SoundManager {
 
   // 7. General UI tap / button click
   public playTap() {
+    haptics.tap();
     if (this.muted) return;
     const ctx = this.getContext();
     if (!ctx) return;

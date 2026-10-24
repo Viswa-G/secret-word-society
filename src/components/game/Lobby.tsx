@@ -18,6 +18,9 @@ import {
   Vote,
   Target,
   Sparkles,
+  Volume2,
+  VolumeX,
+  Trophy,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
@@ -53,6 +56,7 @@ export function Lobby() {
   const [sheet, setSheet] = useState<Sheet>(null);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState(g.localPlayer.name);
+  const [isMuted, setIsMuted] = useState(() => sounds.isMuted());
 
   // Auto-connect if gameMode is online and roomId is present
   useEffect(() => {
@@ -126,6 +130,25 @@ export function Lobby() {
       <div className="mx-auto max-w-md px-4 pt-4">
         {/* Header */}
         <div className="relative flex items-center justify-center pt-2">
+          {/* Sound Mute Toggle */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = sounds.toggleMute();
+              setIsMuted(next);
+              if (!next) sounds.playTap();
+            }}
+            className="absolute left-0 top-1 text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
+            aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
+            title={isMuted ? "Unmute sounds" : "Mute sounds"}
+          >
+            {isMuted ? (
+              <VolumeX className="h-7 w-7 text-destructive" strokeWidth={2.2} />
+            ) : (
+              <Volume2 className="h-7 w-7 text-foreground/80" strokeWidth={2.2} />
+            )}
+          </button>
+
           <h1 className="font-display text-5xl leading-[0.9] font-extrabold text-center text-foreground/85 tracking-tight">
             IMPOSTER
             <br />
@@ -140,6 +163,35 @@ export function Lobby() {
             <Box className="h-7 w-7 text-foreground/80" strokeWidth={2.4} />
           </Link>
         </div>
+
+        {/* Session Score Banner in Lobby */}
+        {g.score && (g.score.crewWins > 0 || g.score.imposterWins > 0) && (
+          <div className="mt-4 rounded-2xl bg-card p-3 card-shadow border border-border/80 flex items-center justify-between animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">🏆</span>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground leading-none">
+                  Session Score
+                </p>
+                <div className="flex items-center gap-2.5 text-xs font-black text-foreground mt-1">
+                  <span className="text-lime-600 dark:text-lime-400">Crew: {g.score.crewWins}</span>
+                  <span className="text-muted-foreground/30">•</span>
+                  <span className="text-pink">Impostors: {g.score.imposterWins}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                g.resetScore();
+              }}
+              className="text-[11px] font-bold text-muted-foreground/70 hover:text-foreground px-2 py-1 rounded-lg hover:bg-secondary transition cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
+        )}
 
         <div className="mt-8 space-y-4">
           {/* Player Profile Setup */}

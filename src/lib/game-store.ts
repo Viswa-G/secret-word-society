@@ -111,6 +111,14 @@ type GameState = {
   setExtraVoterEnabled: (b: boolean) => void;
   setBountyHunterEnabled: (b: boolean) => void;
 
+  // Session Scoreboard
+  score: {
+    crewWins: number;
+    imposterWins: number;
+  };
+  recordWin: (winner: "crew" | "imposter") => void;
+  resetScore: () => void;
+
   startGame: () => void;
   markViewed: () => void;
   nextPlayer: () => void;
@@ -215,6 +223,11 @@ export const useGame = create<GameState>()(
       initiatorEnabled: true,
       extraVoterEnabled: true,
       bountyHunterEnabled: true,
+
+      score: {
+        crewWins: 0,
+        imposterWins: 0,
+      },
 
       phase: "lobby",
       word: null,
@@ -356,6 +369,22 @@ export const useGame = create<GameState>()(
         set({
           classicAccusedPlayerNames: names,
           classicAccusedPlayerName: names[0] || null,
+        }),
+      recordWin: (winner) =>
+        set((state) => ({
+          score: {
+            ...state.score,
+            crewWins: winner === "crew" ? state.score.crewWins + 1 : state.score.crewWins,
+            imposterWins:
+              winner === "imposter" ? state.score.imposterWins + 1 : state.score.imposterWins,
+          },
+        })),
+      resetScore: () =>
+        set({
+          score: {
+            crewWins: 0,
+            imposterWins: 0,
+          },
         }),
       setImposterHintEnabled: (b) => {
         set({ imposterHintEnabled: b });
@@ -815,6 +844,7 @@ export const useGame = create<GameState>()(
         initiatorEnabled: state.initiatorEnabled,
         extraVoterEnabled: state.extraVoterEnabled,
         bountyHunterEnabled: state.bountyHunterEnabled,
+        score: state.score,
         localPlayer: state.localPlayer,
       }),
     },

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="limeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b6f028"/>
+      <stop offset="100%" stop-color="#84cc16"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- App Icon Background -->
+  <rect width="512" height="512" rx="128" fill="url(#limeGrad)"/>
+  
+  <!-- Subtle Inner Border -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="8"/>
+
+  <!-- Center Mask / Detective Graphic -->
+  <g transform="translate(256, 175) scale(1.15)">
+    <!-- Sunglasses / Imposter Mask -->
+    <path d="M-90,-10 C-90,-35 -40,-45 -10,-25 C0,-18 0,-18 10,-25 C40,-45 90,-35 90,-10 C90,28 35,42 0,22 C-35,42 -90,28 -90,-10 Z" fill="#1e2410" filter="url(#shadow)"/>
+    <ellipse cx="-45" cy="-2" rx="32" ry="18" fill="#ec4899"/>
+    <ellipse cx="45" cy="-2" rx="32" ry="18" fill="#ec4899"/>
+    <ellipse cx="-48" cy="-6" rx="10" ry="5" fill="#ffffff" opacity="0.6"/>
+    <ellipse cx="42" cy="-6" rx="10" ry="5" fill="#ffffff" opacity="0.6"/>
+  </g>
+
+  <!-- Text: IMPOSTER WHO? -->
+  <text x="256" y="340" text-anchor="middle" font-family="'Arial Black', 'Impact', sans-serif" font-weight="900" font-size="44" fill="#1e2410" letter-spacing="4">IMPOSTER</text>
+  <text x="256" y="425" text-anchor="middle" font-family="'Arial Black', 'Impact', sans-serif" font-weight="900" font-size="78" fill="#1e2410" letter-spacing="2">WHO?</text>
+</svg>
