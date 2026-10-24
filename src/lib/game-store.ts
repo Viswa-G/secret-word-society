@@ -70,6 +70,7 @@ type GameState = {
   currentPlayerIndex: number;
   cardViewed: boolean; // has current player held-to-reveal at least once
   classicAccusedPlayerName: string | null; // player accused by the group in classic mode
+  classicAccusedPlayerNames: string[]; // support multi-select when multiple imposters
 
   // Online Multiplayer State
   roomId: string | null;
@@ -103,6 +104,7 @@ type GameState = {
   setTimeLimitEnabled: (b: boolean) => void;
   setTimeLimitDuration: (d: number) => void;
   setClassicAccusedPlayerName: (name: string | null) => void;
+  setClassicAccusedPlayerNames: (names: string[]) => void;
   setImposterHintEnabled: (b: boolean) => void;
   setGuardianAngelEnabled: (b: boolean) => void;
   setInitiatorEnabled: (b: boolean) => void;
@@ -221,6 +223,7 @@ export const useGame = create<GameState>()(
       currentPlayerIndex: 0,
       cardViewed: false,
       classicAccusedPlayerName: null,
+      classicAccusedPlayerNames: [],
 
       // Online variables
       roomId: null,
@@ -344,7 +347,16 @@ export const useGame = create<GameState>()(
         }
       },
       setTimeLimitDuration: (d) => set({ timeLimitDuration: d }),
-      setClassicAccusedPlayerName: (name) => set({ classicAccusedPlayerName: name }),
+      setClassicAccusedPlayerName: (name) =>
+        set({
+          classicAccusedPlayerName: name,
+          classicAccusedPlayerNames: name ? [name] : [],
+        }),
+      setClassicAccusedPlayerNames: (names) =>
+        set({
+          classicAccusedPlayerNames: names,
+          classicAccusedPlayerName: names[0] || null,
+        }),
       setImposterHintEnabled: (b) => {
         set({ imposterHintEnabled: b });
         if (get().gameMode === "online" && get().roomId) {
@@ -500,6 +512,7 @@ export const useGame = create<GameState>()(
           currentPlayerIndex: 0,
           cardViewed: false,
           classicAccusedPlayerName: null,
+          classicAccusedPlayerNames: [],
         });
       },
       markViewed: () => set({ cardViewed: true }),
@@ -546,6 +559,7 @@ export const useGame = create<GameState>()(
             currentPlayerIndex: 0,
             cardViewed: false,
             classicAccusedPlayerName: null,
+            classicAccusedPlayerNames: [],
           });
         }
       },

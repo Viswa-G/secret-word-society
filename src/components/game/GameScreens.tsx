@@ -916,6 +916,9 @@ function OnlineDiscussScreen() {
 
 function ClassicDiscussScreen() {
   const g = useGame();
+  const actualImposterCount =
+    g.assignments.filter((a) => a.isImposter).length || g.imposterCount || 1;
+
   const starter =
     g.assignments.find((a) => !a.isImposter)?.playerName ??
     g.assignments[0]?.playerName ??
@@ -924,7 +927,7 @@ function ClassicDiscussScreen() {
   const [timeLeft, setTimeLeft] = useState(() => g.timeLimitDuration || 90);
   const [isRunning, setIsRunning] = useState(true);
   const [isAccusing, setIsAccusing] = useState(false);
-  const [selectedAccused, setSelectedAccused] = useState<Assignment | null>(null);
+  const [selectedAccused, setSelectedAccused] = useState<Assignment[]>([]);
   const [suspenseState, setSuspenseState] = useState<"idle" | "drumroll" | "revealed">("idle");
 
   // Timer countdown effect
@@ -971,28 +974,41 @@ function ClassicDiscussScreen() {
   const handleOpenAccuse = () => {
     sounds.playTap();
     setIsAccusing(true);
-    setSelectedAccused(null);
+    setSelectedAccused([]);
     setSuspenseState("idle");
   };
 
-  const handleSelectPlayer = (assignment: Assignment) => {
+  const handleTogglePlayer = (assignment: Assignment) => {
     sounds.playTap();
-    setSelectedAccused(assignment);
+    setSelectedAccused((prev) => {
+      const isAlreadySelected = prev.some((a) => a.playerName === assignment.playerName);
+      if (isAlreadySelected) {
+        return prev.filter((a) => a.playerName !== assignment.playerName);
+      }
+      if (prev.length < actualImposterCount) {
+        return [...prev, assignment];
+      }
+      if (actualImposterCount === 1) {
+        return [assignment];
+      }
+      return [...prev.slice(1), assignment];
+    });
     setSuspenseState("idle");
   };
 
   const handleRevealAccused = () => {
-    if (!selectedAccused) return;
+    if (selectedAccused.length === 0) return;
     sounds.playDrumroll();
     setSuspenseState("drumroll");
     window.setTimeout(() => {
       setSuspenseState("revealed");
-      if (selectedAccused.isImposter) {
+      const anyImposter = selectedAccused.some((a) => a.isImposter);
+      if (anyImposter) {
         sounds.playVictory();
       } else {
         sounds.playDefeat();
       }
-      g.setClassicAccusedPlayerName(selectedAccused.playerName);
+      g.setClassicAccusedPlayerNames(selectedAccused.map((a) => a.playerName));
     }, 700);
   };
 
@@ -1136,11 +1152,11 @@ function ClassicDiscussScreen() {
       {/* Room Accusation Modal */}
       {isAccusing && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-3 sm:p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-card rounded-3xl p-5 card-shadow border-2 border-foreground space-y-4 animate-in slide-in-from-bottom-6">
+          <div className="w-full max-w-md bg-card rounded-3xl p-5 card-shadow border-2 border-foreground space-y-3.5 animate-in slide-in-from-bottom-6">
             <div className="flex items-center justify-between pb-1 border-b border-border/50">
               <div>
-                <span className="text-[10px] font-extrabold tracking-widest text-pink uppercase block">
-                  ROOM ACCUSATION
+                <span className="text-[10px] font-black tracking-widest text-pink uppercase block">
+                  ROOM ACCUSATION &amp; VOTING
                 </span>
                 <h3 className="font-display text-xl font-black text-foreground">
                   Who did the room vote out?
@@ -1149,57 +1165,122 @@ function ClassicDiscussScreen() {
               <button
                 type="button"
                 onClick={() => setIsAccusing(false)}
-                className="p-1 rounded-xl text-muted-foreground hover:text-foreground"
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition"
               >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
-            {suspenseState === "revealed" && selectedAccused ? (
-              <div className="space-y-4 py-2 animate-in zoom-in-95">
+            {suspenseState === "revealed" && selectedAccused.length > 0 ? (
+              <div className="space-y-3.5 py-1 animate-in zoom-in-95 max-h-[70vh] overflow-y-auto pr-1">
+                {/* Overall Group Verdict */}
+                {(() => {
+                  const caughtCount = selectedAccused.filter((a) => a.isImposter).length;
+                  const totalAccused = selectedAccused.length;
+                  const allCaught = caughtCount === actualImposterCount;
+                  const noneCaught = caughtCount === 0;
+
+                  return (
+                    <div
+                      className={`rounded-2xl p-4 text-center card-shadow border-2 ${
+                        allCaught
+                          ? "bg-lime/25 border-lime text-foreground"
+                          : noneCaught
+                            ? "bg-destructive/15 border-destructive text-destructive"
+                            : "bg-amber-500/15 border-amber-500 text-foreground"
+                      }`}
+                    >
+                      <span className="text-3xl block mb-1">
+                        {allCaught ? "🏆" : noneCaught ? "😱" : "⚖️"}
+                      </span>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black uppercase mb-1 bg-background/80">
+                        {allCaught ? (
+                          <span className="text-foreground flex items-center gap-1">
+                            <Trophy className="h-3.5 w-3.5" /> FLAWLESS CREWMATE WIN!
+                          </span>
+                        ) : noneCaught ? (
+                          <span className="text-destructive flex items-center gap-1">
+                            <AlertCircle className="h-3.5 w-3.5" /> IMPOSTORS ESCAPED!
+                          </span>
+                        ) : (
+                          <span className="text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                            <Trophy className="h-3.5 w-3.5" /> PARTIAL CATCH ({caughtCount}/
+                            {actualImposterCount})
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-display text-lg font-black mt-1">
+                        {allCaught
+                          ? `The room caught all ${actualImposterCount} Impostor${actualImposterCount > 1 ? "s" : ""}!`
+                          : noneCaught
+                            ? totalAccused > 1
+                              ? "Both accused players were innocent! Impostors deceived everyone!"
+                              : "The accused player was innocent! Impostor deceived everyone!"
+                            : `Caught ${caughtCount} Impostor, but ${actualImposterCount - caughtCount} escaped!`}
+                      </p>
+                    </div>
+                  );
+                })()}
+
+                {/* Individual Cards for each accused player */}
                 <div
-                  className={`rounded-2xl p-5 text-center card-shadow border-2 ${
-                    selectedAccused.isImposter
-                      ? "bg-lime/25 border-lime text-foreground"
-                      : "bg-destructive/15 border-destructive text-destructive"
-                  }`}
+                  className={`grid ${selectedAccused.length > 1 ? "grid-cols-2" : "grid-cols-1"} gap-2.5`}
                 >
-                  <span className="text-4xl block mb-2">
-                    {selectedAccused.isImposter ? "🎉" : "😱"}
-                  </span>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black uppercase mb-1 bg-background/80">
-                    {selectedAccused.isImposter ? (
-                      <span className="text-foreground flex items-center gap-1">
-                        <Trophy className="h-3.5 w-3.5" /> BUSTED!
-                      </span>
-                    ) : (
-                      <span className="text-destructive flex items-center gap-1">
-                        <AlertCircle className="h-3.5 w-3.5" /> INNOCENT!
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="font-display text-2xl font-black mt-1">
-                    {selectedAccused.playerName}{" "}
-                    {selectedAccused.isImposter ? "WAS AN IMPOSTOR!" : "WAS INNOCENT!"}
-                  </h4>
-                  <p className="text-xs font-semibold mt-1 opacity-90">
-                    {selectedAccused.isImposter
-                      ? "Great job! The crewmates caught the imposter!"
-                      : "Oh no! The imposter deceived everyone and survives!"}
-                  </p>
-                  {/* If Bounty Hunter in match */}
-                  {(() => {
-                    const bh = g.assignments.find((a) => a.specialRole === "bounty_hunter");
-                    if (bh && bh.bountyTargetName === selectedAccused.playerName) {
-                      return (
-                        <div className="mt-3 rounded-xl bg-red-100 text-red-800 p-2 text-xs font-bold border border-red-300">
-                          🎯 BOUNTY COLLECTED! {bh.playerName} achieved their Bounty Target!
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
+                  {selectedAccused.map((accused) => (
+                    <div
+                      key={accused.playerName}
+                      className={`rounded-2xl p-3.5 text-center card-shadow border-2 flex flex-col justify-between ${
+                        accused.isImposter
+                          ? "bg-lime/20 border-lime text-foreground"
+                          : "bg-destructive/15 border-destructive text-destructive"
+                      }`}
+                    >
+                      <div>
+                        <span className="text-3xl block mb-1">
+                          {accused.isImposter ? "🎉" : "😱"}
+                        </span>
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase mb-1 ${
+                            accused.isImposter
+                              ? "bg-lime text-foreground"
+                              : "bg-destructive text-white"
+                          }`}
+                        >
+                          {accused.isImposter ? "IMPOSTOR" : "INNOCENT"}
+                        </span>
+                        <h4 className="font-display text-xl font-black mt-0.5 truncate">
+                          {accused.playerName}
+                        </h4>
+                      </div>
+
+                      <div className="mt-2 text-xs font-semibold opacity-90">
+                        {accused.isImposter ? (
+                          accused.clue ? (
+                            <span className="italic font-bold">Hint: “{accused.clue}”</span>
+                          ) : (
+                            <span>Impostor caught!</span>
+                          )
+                        ) : (
+                          <span>Innocent crewmate</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
+
+                {/* Bounty Hunter alert if applicable */}
+                {(() => {
+                  const bh = g.assignments.find((a) => a.specialRole === "bounty_hunter");
+                  if (bh && selectedAccused.some((a) => a.playerName === bh.bountyTargetName)) {
+                    return (
+                      <div className="rounded-xl bg-red-100 text-red-800 p-2.5 text-xs font-bold border border-red-300 text-center">
+                        🎯 BOUNTY COLLECTED! {bh.playerName} successfully eliminated{" "}
+                        {bh.bountyTargetName}!
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <div className="space-y-2 pt-1">
                   <button
@@ -1212,72 +1293,169 @@ function ClassicDiscussScreen() {
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedAccused(null);
+                      setSelectedAccused([]);
                       setSuspenseState("idle");
                     }}
                     className="w-full text-center text-xs font-bold text-muted-foreground hover:text-foreground py-2"
                   >
-                    Choose another player
+                    Change Accused Players
                   </button>
                 </div>
               </div>
-            ) : suspenseState === "drumroll" && selectedAccused ? (
+            ) : suspenseState === "drumroll" && selectedAccused.length > 0 ? (
               <div className="py-8 text-center space-y-3">
                 <div className="text-5xl animate-bounce">🥁</div>
                 <h4 className="font-display text-xl font-black text-foreground">
-                  Revealing {selectedAccused.playerName}'s Identity...
+                  Revealing {selectedAccused.map((a) => a.playerName).join(" & ")}...
                 </h4>
                 <p className="text-xs font-bold text-muted-foreground animate-pulse">
-                  Tension is rising!
+                  Tension is rising in the room!
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-xs text-muted-foreground font-semibold">
-                  Tap the player the room agreed to eliminate after debate:
-                </p>
-                <div className="grid grid-cols-2 gap-2 max-h-[45vh] overflow-y-auto pr-1">
-                  {g.assignments.map((assignment) => {
-                    const isSelected = selectedAccused?.playerName === assignment.playerName;
+                {/* Match Imposter Count & Selection Counter */}
+                <div
+                  className={`rounded-2xl p-2.5 border flex items-center justify-between ${
+                    actualImposterCount > 1
+                      ? "bg-amber-500/10 border-amber-500/30 text-foreground"
+                      : "bg-secondary/60 border-border text-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`h-7 w-7 rounded-lg grid place-items-center text-xs font-black ${
+                        actualImposterCount > 1
+                          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                          : "bg-primary/20 text-foreground"
+                      }`}
+                    >
+                      {actualImposterCount > 1 ? "👥" : "🎯"}
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-wider leading-none">
+                        {actualImposterCount > 1
+                          ? `${actualImposterCount} IMPOSTORS IN THIS MATCH`
+                          : "1 IMPOSTOR IN THIS MATCH"}
+                      </p>
+                      <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">
+                        {actualImposterCount > 1
+                          ? `Select 1 or up to ${actualImposterCount} suspects`
+                          : "Tap the player the room agreed to eliminate"}
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className={`px-3 py-1 rounded-full text-xs font-display font-black border transition-all ${
+                      selectedAccused.length > 0
+                        ? "bg-pink text-white border-pink card-shadow"
+                        : "bg-secondary text-muted-foreground border-border"
+                    }`}
+                  >
+                    {selectedAccused.length} / {actualImposterCount}
+                  </div>
+                </div>
+
+                {/* Player Selection Cards */}
+                <div className="grid grid-cols-2 gap-2.5 max-h-[42vh] overflow-y-auto pr-1 py-1">
+                  {g.assignments.map((assignment, index) => {
+                    const selectedIndex = selectedAccused.findIndex(
+                      (a) => a.playerName === assignment.playerName,
+                    );
+                    const isSelected = selectedIndex !== -1;
+
+                    const avatarTints = [
+                      "bg-pink/15 text-pink border-pink/30",
+                      "bg-blue-500/15 text-blue-600 border-blue-500/30",
+                      "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
+                      "bg-purple-500/15 text-purple-600 border-purple-500/30",
+                      "bg-amber-500/15 text-amber-600 border-amber-500/30",
+                      "bg-cyan-500/15 text-cyan-600 border-cyan-500/30",
+                    ];
+                    const tint = avatarTints[index % avatarTints.length];
+
                     return (
                       <button
                         key={assignment.playerName}
                         type="button"
-                        onClick={() => handleSelectPlayer(assignment)}
-                        className={`p-3 rounded-2xl border-2 text-left transition font-display font-extrabold flex items-center justify-between ${
+                        onClick={() => handleTogglePlayer(assignment)}
+                        className={`relative p-3 rounded-2xl border-2 text-left transition-all duration-200 flex items-center gap-2.5 cursor-pointer select-none active:scale-[0.97] ${
                           isSelected
-                            ? "bg-pink text-white border-foreground card-shadow scale-[1.02]"
-                            : "bg-secondary/70 hover:bg-secondary text-foreground border-border/80"
+                            ? "bg-pink text-white border-pink card-shadow ring-2 ring-pink/30 shadow-md"
+                            : "bg-card hover:bg-secondary/70 text-foreground border-border/80 card-shadow hover:border-border"
                         }`}
                       >
-                        <span className="truncate text-sm sm:text-base">
-                          {assignment.playerName}
-                        </span>
-                        {isSelected && <Check className="h-5 w-5 shrink-0 ml-1" />}
+                        {/* Avatar Badge */}
+                        <div
+                          className={`h-9 w-9 rounded-xl border flex items-center justify-center font-display font-black text-sm shrink-0 transition-colors ${
+                            isSelected ? "bg-white/20 text-white border-white/40" : tint
+                          }`}
+                        >
+                          {assignment.playerName.charAt(0).toUpperCase()}
+                        </div>
+
+                        {/* Name & Selected order badge */}
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate font-display font-extrabold text-sm sm:text-base leading-tight">
+                            {assignment.playerName}
+                          </span>
+                          {actualImposterCount > 1 && isSelected && (
+                            <span className="inline-block text-[9px] font-black uppercase tracking-wider bg-white/25 text-white px-1.5 py-0.5 rounded-sm mt-0.5">
+                              Suspect #{selectedIndex + 1}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Checkbox indicator */}
+                        <div
+                          className={`h-5 w-5 rounded-md border grid place-items-center shrink-0 transition-all ${
+                            isSelected
+                              ? "bg-white text-pink border-white font-black scale-105"
+                              : "border-border/80 bg-secondary/30 text-transparent"
+                          }`}
+                        >
+                          <Check className="h-3.5 w-3.5 stroke-[3]" />
+                        </div>
                       </button>
                     );
                   })}
                 </div>
 
-                {selectedAccused ? (
+                {/* Reveal Action Button */}
+                {selectedAccused.length > 0 ? (
                   <div className="pt-2 space-y-2 animate-in fade-in">
                     <button
                       type="button"
                       onClick={handleRevealAccused}
-                      className="w-full rounded-2xl bg-destructive py-4 font-display font-black text-white btn-3d text-base flex items-center justify-center gap-2"
+                      className="w-full rounded-2xl bg-destructive py-4 font-display font-black text-white btn-3d text-base flex items-center justify-center gap-2 shadow-lg hover:brightness-105 active:scale-[0.98] transition"
                     >
-                      🥁 REVEAL {selectedAccused.playerName.toUpperCase()}'S IDENTITY
+                      <Users className="h-5 w-5" />
+                      {selectedAccused.length === 1
+                        ? `REVEAL ${selectedAccused[0].playerName.toUpperCase()}'S IDENTITY`
+                        : `REVEAL BOTH IDENTITIES (${selectedAccused.map((a) => a.playerName.toUpperCase()).join(" & ")})`}
                     </button>
                   </div>
                 ) : (
-                  <div className="pt-1 text-center">
+                  <div className="pt-2 space-y-2">
                     <button
                       type="button"
-                      onClick={handleGoToFullResults}
-                      className="text-xs font-bold text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                      disabled
+                      className="w-full rounded-2xl bg-secondary py-3.5 font-display font-bold text-muted-foreground/60 text-sm flex items-center justify-center gap-2 cursor-not-allowed border border-border"
                     >
-                      Skip straight to full reveal
+                      SELECT{" "}
+                      {actualImposterCount > 1
+                        ? `UP TO ${actualImposterCount} SUSPECTS`
+                        : "A SUSPECT"}
                     </button>
+                    <div className="pt-1 text-center">
+                      <button
+                        type="button"
+                        onClick={handleGoToFullResults}
+                        className="text-xs font-bold text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                      >
+                        Skip straight to full reveal
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1681,20 +1859,31 @@ function ClassicResultScreen() {
   const g = useGame();
   const imposters = g.assignments.filter((a) => a.isImposter);
 
-  const accusedAssignment = g.classicAccusedPlayerName
-    ? g.assignments.find((a) => a.playerName === g.classicAccusedPlayerName)
-    : null;
-  const wasImposterEliminated = accusedAssignment?.isImposter;
+  const accusedNames =
+    g.classicAccusedPlayerNames && g.classicAccusedPlayerNames.length > 0
+      ? g.classicAccusedPlayerNames
+      : g.classicAccusedPlayerName
+        ? [g.classicAccusedPlayerName]
+        : [];
+
+  const accusedAssignments = accusedNames
+    .map((name) => g.assignments.find((a) => a.playerName === name))
+    .filter(Boolean) as Assignment[];
+
+  const imposterAccusedCount = accusedAssignments.filter((a) => a.isImposter).length;
+  const totalAccused = accusedAssignments.length;
+  const allCaught = imposterAccusedCount === imposters.length && imposterAccusedCount > 0;
+  const partialCaught = imposterAccusedCount > 0 && imposterAccusedCount < imposters.length;
 
   useEffect(() => {
-    if (g.classicAccusedPlayerName) {
-      if (wasImposterEliminated) {
+    if (accusedAssignments.length > 0) {
+      if (allCaught || partialCaught) {
         sounds.playVictory();
       } else {
         sounds.playDefeat();
       }
     }
-  }, [g.classicAccusedPlayerName, wasImposterEliminated]);
+  }, [accusedAssignments.length, allCaught, partialCaught]);
 
   return (
     <div className="min-h-dvh bg-background flex flex-col animate-in fade-in">
@@ -1702,35 +1891,61 @@ function ClassicResultScreen() {
         <TopBar onClose={g.exitToLobby} />
       </div>
       <div className="mx-auto w-full max-w-md flex-1 px-4 py-6 text-center space-y-4">
-        {/* Accused Room Verdict Banner if a player was voted out */}
-        {accusedAssignment && (
+        {/* Accused Room Verdict Banner if players were voted out */}
+        {accusedAssignments.length > 0 && (
           <div
             className={`rounded-3xl p-5 card-shadow text-center border-2 ${
-              wasImposterEliminated
+              allCaught
                 ? "bg-lime/20 border-lime text-foreground"
-                : "bg-destructive/15 border-destructive/40 text-destructive"
+                : partialCaught
+                  ? "bg-amber-500/15 border-amber-500/40 text-foreground"
+                  : "bg-destructive/15 border-destructive/40 text-destructive"
             }`}
           >
             <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black uppercase mb-1 bg-background/80">
-              {wasImposterEliminated ? (
+              {allCaught ? (
                 <span className="text-foreground flex items-center gap-1">
-                  <Trophy className="h-3.5 w-3.5" /> CREWMATE VICTORY
+                  <Trophy className="h-3.5 w-3.5 text-lime fill-lime" /> FLAWLESS CREWMATE VICTORY
+                </span>
+              ) : partialCaught ? (
+                <span className="text-amber-500 flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5" /> PARTIAL CATCH ({imposterAccusedCount}/
+                  {imposters.length} IMPOSTORS)
                 </span>
               ) : (
                 <span className="text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3.5 w-3.5" /> IMPOSTOR VICTORY
+                  <AlertCircle className="h-3.5 w-3.5" /> IMPOSTORS ESCAPED
                 </span>
               )}
             </div>
             <h3 className="font-display text-2xl font-black mt-1">
-              {wasImposterEliminated
-                ? `${g.classicAccusedPlayerName} was eliminated!`
-                : `${g.classicAccusedPlayerName} was innocent!`}
+              {accusedNames.length === 1
+                ? `${accusedNames[0]} was eliminated!`
+                : `${accusedNames.join(" & ")} were eliminated!`}
             </h3>
-            <p className="text-xs font-semibold text-foreground/80 mt-1">
-              {wasImposterEliminated
-                ? "The room voted out an Impostor! Great detective work."
-                : "The room eliminated an innocent player. The Impostors survived!"}
+
+            {/* Suspect individual role chips */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              {accusedAssignments.map((a) => (
+                <span
+                  key={a.playerId}
+                  className={`px-3 py-1 rounded-full text-xs font-black border ${
+                    a.isImposter
+                      ? "bg-destructive text-white border-destructive shadow-sm"
+                      : "bg-secondary text-foreground/80 border-border"
+                  }`}
+                >
+                  {a.playerName}: {a.isImposter ? "🚨 Impostor" : "🕊️ Innocent"}
+                </span>
+              ))}
+            </div>
+
+            <p className="text-xs font-semibold text-foreground/80 mt-2">
+              {allCaught
+                ? "Every suspect voted out was an Impostor! Outstanding detective work."
+                : partialCaught
+                  ? "The room caught an Impostor, but another escaped unnoticed!"
+                  : "The room eliminated innocent player(s). The Impostors survived!"}
             </p>
           </div>
         )}
