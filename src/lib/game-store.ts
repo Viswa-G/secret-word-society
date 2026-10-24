@@ -12,7 +12,9 @@ export type Assignment = {
   clue?: string;
   playerId?: string; // added to identify assignments in online mode
   specialRole?: SpecialRole | null;
-  evilGuardianClue?: string;
+  guardianAngelClue?: string;
+  bountyTargetName?: string;
+  bountyTargetId?: string;
 };
 
 export type Player = {
@@ -54,9 +56,10 @@ type GameState = {
   imposterCount: number;
   timeLimitEnabled: boolean;
   imposterHintEnabled: boolean;
-  evilGuardianEnabled: boolean;
+  guardianAngelEnabled: boolean;
   initiatorEnabled: boolean;
   extraVoterEnabled: boolean;
+  bountyHunterEnabled: boolean;
 
   // Round / Status
   phase: Phase;
@@ -97,9 +100,10 @@ type GameState = {
   setImposterCount: (n: number) => void;
   setTimeLimitEnabled: (b: boolean) => void;
   setImposterHintEnabled: (b: boolean) => void;
-  setEvilGuardianEnabled: (b: boolean) => void;
+  setGuardianAngelEnabled: (b: boolean) => void;
   setInitiatorEnabled: (b: boolean) => void;
   setExtraVoterEnabled: (b: boolean) => void;
+  setBountyHunterEnabled: (b: boolean) => void;
 
   startGame: () => void;
   markViewed: () => void;
@@ -200,9 +204,10 @@ export const useGame = create<GameState>()(
       imposterCount: 1,
       timeLimitEnabled: false,
       imposterHintEnabled: true,
-      evilGuardianEnabled: true,
+      guardianAngelEnabled: true,
       initiatorEnabled: true,
       extraVoterEnabled: true,
+      bountyHunterEnabled: true,
 
       phase: "lobby",
       word: null,
@@ -293,9 +298,10 @@ export const useGame = create<GameState>()(
             customCategories: CATEGORIES,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
-            evilGuardianEnabled: get().evilGuardianEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
           });
         }
       },
@@ -308,9 +314,10 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
-            evilGuardianEnabled: get().evilGuardianEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
           });
         }
       },
@@ -323,9 +330,10 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: b,
             imposterHintEnabled: get().imposterHintEnabled,
-            evilGuardianEnabled: get().evilGuardianEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
           });
         }
       },
@@ -338,14 +346,15 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: b,
-            evilGuardianEnabled: get().evilGuardianEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
           });
         }
       },
-      setEvilGuardianEnabled: (b) => {
-        set({ evilGuardianEnabled: b });
+      setGuardianAngelEnabled: (b) => {
+        set({ guardianAngelEnabled: b });
         if (get().gameMode === "online" && get().roomId) {
           sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
             imposterCount: get().imposterCount,
@@ -353,9 +362,10 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
-            evilGuardianEnabled: b,
+            guardianAngelEnabled: b,
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
           });
         }
       },
@@ -368,9 +378,10 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
-            evilGuardianEnabled: get().evilGuardianEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
             initiatorEnabled: b,
             extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
           });
         }
       },
@@ -383,9 +394,26 @@ export const useGame = create<GameState>()(
             customCategories: get().customCategories,
             timeLimitEnabled: get().timeLimitEnabled,
             imposterHintEnabled: get().imposterHintEnabled,
-            evilGuardianEnabled: get().evilGuardianEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: b,
+            bountyHunterEnabled: get().bountyHunterEnabled,
+          });
+        }
+      },
+      setBountyHunterEnabled: (b) => {
+        set({ bountyHunterEnabled: b });
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
+            imposterCount: get().imposterCount,
+            categories: get().categories,
+            customCategories: get().customCategories,
+            timeLimitEnabled: get().timeLimitEnabled,
+            imposterHintEnabled: get().imposterHintEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: b,
           });
         }
       },
@@ -434,18 +462,26 @@ export const useGame = create<GameState>()(
 
         // Assign special roles based on settings
         const specialRoleAssignments = assignSpecialRoles(
-          assignments.map((a) => ({ isImposter: a.isImposter, clue: a.clue })),
+          assignments.map((a) => ({
+            isImposter: a.isImposter,
+            clue: a.clue,
+            playerName: a.playerName,
+            playerId: a.playerId,
+          })),
           {
-            evilGuardianEnabled: get().evilGuardianEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
             availableClues: clues,
           },
         );
 
         assignments.forEach((a, i) => {
           a.specialRole = specialRoleAssignments[i].specialRole;
-          a.evilGuardianClue = specialRoleAssignments[i].evilGuardianClue;
+          a.guardianAngelClue = specialRoleAssignments[i].guardianAngelClue;
+          a.bountyTargetName = specialRoleAssignments[i].bountyTargetName;
+          a.bountyTargetId = specialRoleAssignments[i].bountyTargetId;
         });
 
         set({
@@ -459,12 +495,13 @@ export const useGame = create<GameState>()(
       },
       markViewed: () => set({ cardViewed: true }),
       nextPlayer: () => {
-        const { currentPlayerIndex, assignments, initiatorEnabled } = get();
+        const { currentPlayerIndex, assignments, initiatorEnabled, extraVoterEnabled } = get();
         if (!get().cardViewed) return;
         if (currentPlayerIndex + 1 >= assignments.length) {
-          const hasInitiator =
-            initiatorEnabled && assignments.some((a) => a.specialRole === "initiator");
-          if (hasInitiator) {
+          const hasSpecialReveal =
+            (initiatorEnabled && assignments.some((a) => a.specialRole === "initiator")) ||
+            (extraVoterEnabled && assignments.some((a) => a.specialRole === "extra_voter"));
+          if (hasSpecialReveal) {
             set({ phase: "initiator" });
           } else {
             set({ phase: "discuss" });
@@ -529,7 +566,9 @@ export const useGame = create<GameState>()(
                 isImposter: boolean;
                 clue?: string;
                 specialRole?: SpecialRole | null;
-                evilGuardianClue?: string;
+                guardianAngelClue?: string;
+                bountyTargetName?: string;
+                bountyTargetId?: string;
               }) => {
                 const p = data.players.find(
                   (pl: { id: string; name: string }) => pl.id === as.playerId,
@@ -540,7 +579,9 @@ export const useGame = create<GameState>()(
                   isImposter: as.isImposter,
                   clue: as.clue,
                   specialRole: as.specialRole,
-                  evilGuardianClue: as.evilGuardianClue,
+                  guardianAngelClue: as.guardianAngelClue,
+                  bountyTargetName: as.bountyTargetName,
+                  bountyTargetId: as.bountyTargetId,
                 };
               },
             );
@@ -564,9 +605,10 @@ export const useGame = create<GameState>()(
               customCategories: get().customCategories,
               timeLimitEnabled: get().timeLimitEnabled,
               imposterHintEnabled: get().imposterHintEnabled,
-              evilGuardianEnabled: get().evilGuardianEnabled,
+              guardianAngelEnabled: get().guardianAngelEnabled,
               initiatorEnabled: get().initiatorEnabled,
               extraVoterEnabled: get().extraVoterEnabled,
+              bountyHunterEnabled: get().bountyHunterEnabled,
             };
 
             const serverSettings = data.settings;
@@ -576,9 +618,11 @@ export const useGame = create<GameState>()(
               serverSettings.imposterCount === localSettings.imposterCount &&
               serverSettings.timeLimitEnabled === localSettings.timeLimitEnabled &&
               serverSettings.imposterHintEnabled === localSettings.imposterHintEnabled &&
-              (serverSettings.evilGuardianEnabled ?? true) === localSettings.evilGuardianEnabled &&
+              (serverSettings.guardianAngelEnabled ?? true) ===
+                localSettings.guardianAngelEnabled &&
               (serverSettings.initiatorEnabled ?? true) === localSettings.initiatorEnabled &&
               (serverSettings.extraVoterEnabled ?? true) === localSettings.extraVoterEnabled &&
+              (serverSettings.bountyHunterEnabled ?? true) === localSettings.bountyHunterEnabled &&
               JSON.stringify(serverSettings.categories) ===
                 JSON.stringify(localSettings.categories) &&
               JSON.stringify(serverSettings.customCategories || []) ===
@@ -596,9 +640,10 @@ export const useGame = create<GameState>()(
                   categories: data.settings.categories,
                   timeLimitEnabled: data.settings.timeLimitEnabled,
                   imposterHintEnabled: data.settings.imposterHintEnabled,
-                  evilGuardianEnabled: data.settings.evilGuardianEnabled ?? true,
+                  guardianAngelEnabled: data.settings.guardianAngelEnabled ?? true,
                   initiatorEnabled: data.settings.initiatorEnabled ?? true,
                   extraVoterEnabled: data.settings.extraVoterEnabled ?? true,
+                  bountyHunterEnabled: data.settings.bountyHunterEnabled ?? true,
                 };
 
             set({
@@ -724,9 +769,10 @@ export const useGame = create<GameState>()(
         imposterCount: state.imposterCount,
         timeLimitEnabled: state.timeLimitEnabled,
         imposterHintEnabled: state.imposterHintEnabled,
-        evilGuardianEnabled: state.evilGuardianEnabled,
+        guardianAngelEnabled: state.guardianAngelEnabled,
         initiatorEnabled: state.initiatorEnabled,
         extraVoterEnabled: state.extraVoterEnabled,
+        bountyHunterEnabled: state.bountyHunterEnabled,
         localPlayer: state.localPlayer,
       }),
     },

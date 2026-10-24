@@ -33,7 +33,9 @@ export type Assignment = {
   isImposter: boolean;
   clue?: string;
   specialRole?: SpecialRole | null;
-  evilGuardianClue?: string;
+  guardianAngelClue?: string;
+  bountyTargetName?: string;
+  bountyTargetId?: string;
 };
 
 export type VoteRecord = {
@@ -58,9 +60,10 @@ export type Room = {
     customCategories?: Category[];
     timeLimitEnabled: boolean;
     imposterHintEnabled: boolean;
-    evilGuardianEnabled: boolean;
+    guardianAngelEnabled: boolean;
     initiatorEnabled: boolean;
     extraVoterEnabled: boolean;
+    bountyHunterEnabled: boolean;
   };
   players: Player[];
   phase: Phase;
@@ -223,9 +226,10 @@ export function joinRoom(
         categories: ["everyday", "foods"],
         timeLimitEnabled: false,
         imposterHintEnabled: true,
-        evilGuardianEnabled: true,
+        guardianAngelEnabled: true,
         initiatorEnabled: true,
         extraVoterEnabled: true,
+        bountyHunterEnabled: true,
       },
       players: [],
       phase: "lobby",
@@ -324,18 +328,29 @@ export function startGame(roomId: string, hostId: string) {
 
   // Assign special roles based on settings
   const specialRoleAssignments = assignSpecialRoles(
-    assignments.map((a) => ({ isImposter: a.isImposter, clue: a.clue })),
+    assignments.map((a) => {
+      const pl = room.players.find((p) => p.id === a.playerId);
+      return {
+        isImposter: a.isImposter,
+        clue: a.clue,
+        playerId: a.playerId,
+        playerName: pl?.name || "Player",
+      };
+    }),
     {
-      evilGuardianEnabled: room.settings.evilGuardianEnabled ?? true,
+      guardianAngelEnabled: room.settings.guardianAngelEnabled ?? true,
       initiatorEnabled: room.settings.initiatorEnabled ?? true,
       extraVoterEnabled: room.settings.extraVoterEnabled ?? true,
+      bountyHunterEnabled: room.settings.bountyHunterEnabled ?? true,
       availableClues: clueHints,
     },
   );
 
   assignments.forEach((a, i) => {
     a.specialRole = specialRoleAssignments[i].specialRole;
-    a.evilGuardianClue = specialRoleAssignments[i].evilGuardianClue;
+    a.guardianAngelClue = specialRoleAssignments[i].guardianAngelClue;
+    a.bountyTargetName = specialRoleAssignments[i].bountyTargetName;
+    a.bountyTargetId = specialRoleAssignments[i].bountyTargetId;
   });
 
   // Set game state
@@ -384,10 +399,12 @@ export function markReady(roomId: string, playerId: string) {
   const allReady = activePlayers.every((p) => p.ready);
 
   if (allReady) {
-    const hasInitiator =
-      (room.settings.initiatorEnabled ?? true) &&
-      room.assignments.some((a) => a.specialRole === "initiator");
-    if (hasInitiator) {
+    const hasSpecialReveal =
+      ((room.settings.initiatorEnabled ?? true) &&
+        room.assignments.some((a) => a.specialRole === "initiator")) ||
+      ((room.settings.extraVoterEnabled ?? true) &&
+        room.assignments.some((a) => a.specialRole === "extra_voter"));
+    if (hasSpecialReveal) {
       room.phase = "initiator";
     } else {
       room.phase = "clue";
@@ -729,9 +746,10 @@ export function updateSettings(
     customCategories?: Category[];
     timeLimitEnabled: boolean;
     imposterHintEnabled: boolean;
-    evilGuardianEnabled?: boolean;
+    guardianAngelEnabled?: boolean;
     initiatorEnabled?: boolean;
     extraVoterEnabled?: boolean;
+    bountyHunterEnabled?: boolean;
   },
 ) {
   const room = rooms.get(roomId);
@@ -740,8 +758,10 @@ export function updateSettings(
   room.settings = {
     ...room.settings,
     ...settings,
-    evilGuardianEnabled: settings.evilGuardianEnabled ?? room.settings.evilGuardianEnabled ?? true,
+    guardianAngelEnabled:
+      settings.guardianAngelEnabled ?? room.settings.guardianAngelEnabled ?? true,
     initiatorEnabled: settings.initiatorEnabled ?? room.settings.initiatorEnabled ?? true,
     extraVoterEnabled: settings.extraVoterEnabled ?? room.settings.extraVoterEnabled ?? true,
+    bountyHunterEnabled: settings.bountyHunterEnabled ?? room.settings.bountyHunterEnabled ?? true,
   };
 }

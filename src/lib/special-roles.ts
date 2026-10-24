@@ -1,4 +1,4 @@
-export type SpecialRole = "evil_guardian" | "initiator" | "extra_voter";
+export type SpecialRole = "guardian_angel" | "initiator" | "extra_voter" | "bounty_hunter";
 
 export type SpecialRoleInfo = {
   id: SpecialRole;
@@ -11,16 +11,15 @@ export type SpecialRoleInfo = {
 };
 
 export const SPECIAL_ROLES_INFO: Record<SpecialRole, SpecialRoleInfo> = {
-  evil_guardian: {
-    id: "evil_guardian",
-    name: "The Evil Guardian",
-    icon: "🛡️",
+  guardian_angel: {
+    id: "guardian_angel",
+    name: "Guardian Angel",
+    icon: "👼",
     team: "crew",
     teamLabel: "Crewmate",
     description:
       "A crewmate who sees an impostor's clue and defends them during discussion to convince others not to vote them out.",
-    cardPowerText:
-      "Defend the Impostor during the discussion to convince others not to vote them out!",
+    cardPowerText: "Defend the Impostor during discussion!",
   },
   initiator: {
     id: "initiator",
@@ -42,17 +41,30 @@ export const SPECIAL_ROLES_INFO: Record<SpecialRole, SpecialRoleInfo> = {
     cardPowerText:
       "Cast an extra vote during voting! You can vote for the same player or a different player.",
   },
+  bounty_hunter: {
+    id: "bounty_hunter",
+    name: "The Bounty Hunter",
+    icon: "🎯",
+    team: "crew",
+    teamLabel: "Crewmate",
+    description:
+      "A crewmate whose secret objective is to convince everyone to vote out their assigned bounty target.",
+    cardPowerText: "Convince everyone to vote out your bounty target!",
+  },
 };
 
 export type SpecialRoleAssignment = {
   specialRole: SpecialRole | null;
-  evilGuardianClue?: string;
+  guardianAngelClue?: string;
+  bountyTargetName?: string;
+  bountyTargetId?: string;
 };
 
 export type RoleAssignmentOptions = {
-  evilGuardianEnabled: boolean;
+  guardianAngelEnabled?: boolean;
   initiatorEnabled: boolean;
   extraVoterEnabled: boolean;
+  bountyHunterEnabled?: boolean;
   availableClues: string[];
 };
 
@@ -60,15 +72,15 @@ export type RoleAssignmentOptions = {
  * Assigns special roles following the game rules:
  * 1. Each special role is assigned to at most one player per match. No role repetition.
  * 2. A player can receive only one special role.
- * 3. The Evil Guardian is ALWAYS a crewmate.
+ * 3. The Guardian Angel and Bounty Hunter are ALWAYS crewmates.
  * 4. The Initiator and Extra Voter can be either crewmate or impostor.
  * 5. Disabled roles are never assigned.
- * 6. The Evil Guardian receives the clue of one impostor.
+ * 6. The Guardian Angel receives the clue of one impostor.
+ * 7. The Bounty Hunter receives a secret target player to convince others to eliminate.
  */
-export function assignSpecialRoles<T extends { isImposter: boolean; clue?: string }>(
-  players: T[],
-  options: RoleAssignmentOptions,
-): SpecialRoleAssignment[] {
+export function assignSpecialRoles<
+  T extends { isImposter: boolean; clue?: string; playerName?: string; playerId?: string },
+>(players: T[], options: RoleAssignmentOptions): SpecialRoleAssignment[] {
   const result: SpecialRoleAssignment[] = players.map(() => ({
     specialRole: null,
   }));
@@ -86,14 +98,14 @@ export function assignSpecialRoles<T extends { isImposter: boolean; clue?: strin
     }
   });
 
-  // 1. Assign The Evil Guardian (Crewmate ONLY)
-  if (options.evilGuardianEnabled) {
+  // 1. Assign Guardian Angel (Crewmate ONLY)
+  if (options.guardianAngelEnabled ?? true) {
     const eligibleCrewmates = crewmateIndices.filter((idx) => unassignedIndices.has(idx));
     if (eligibleCrewmates.length > 0) {
       const chosenIdx = eligibleCrewmates[Math.floor(Math.random() * eligibleCrewmates.length)];
       unassignedIndices.delete(chosenIdx);
 
-      // Find one impostor's clue to reveal to the Evil Guardian
+      // Find one impostor's clue to reveal to the Guardian Angel
       let impClue: string | undefined;
       for (const impIdx of imposterIndices) {
         if (players[impIdx].clue) {
@@ -107,9 +119,10 @@ export function assignSpecialRoles<T extends { isImposter: boolean; clue?: strin
         impClue = options.availableClues[0];
       }
 
+      const assignedClue = impClue || "No clue available";
       result[chosenIdx] = {
-        specialRole: "evil_guardian",
-        evilGuardianClue: impClue || "No clue available",
+        specialRole: "guardian_angel",
+        guardianAngelClue: assignedClue,
       };
     }
   }
@@ -135,6 +148,28 @@ export function assignSpecialRoles<T extends { isImposter: boolean; clue?: strin
       result[chosenIdx] = {
         specialRole: "extra_voter",
       };
+    }
+  }
+
+  // 4. Assign The Bounty Hunter (Crewmate ONLY)
+  if (options.bountyHunterEnabled ?? true) {
+    const eligibleCrewmates = crewmateIndices.filter((idx) => unassignedIndices.has(idx));
+    if (eligibleCrewmates.length > 0) {
+      const chosenIdx = eligibleCrewmates[Math.floor(Math.random() * eligibleCrewmates.length)];
+      unassignedIndices.delete(chosenIdx);
+
+      // Pick any OTHER player in the game as the bounty target
+      const candidateTargetIndices = players.map((_, i) => i).filter((i) => i !== chosenIdx);
+      if (candidateTargetIndices.length > 0) {
+        const targetIdx =
+          candidateTargetIndices[Math.floor(Math.random() * candidateTargetIndices.length)];
+        const target = players[targetIdx];
+        result[chosenIdx] = {
+          specialRole: "bounty_hunter",
+          bountyTargetName: target.playerName || `Player ${targetIdx + 1}`,
+          bountyTargetId: target.playerId,
+        };
+      }
     }
   }
 

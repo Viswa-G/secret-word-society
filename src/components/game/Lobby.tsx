@@ -18,6 +18,7 @@ import {
   Shield,
   Zap,
   Vote,
+  Target,
   Sparkles,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -370,18 +371,18 @@ export function Lobby() {
             </div>
 
             <div className="space-y-3">
-              {/* Evil Guardian */}
+              {/* Guardian Angel */}
               <ToggleRow
-                icon={<Shield className="h-5 w-5 text-lime" />}
-                title="THE EVIL GUARDIAN ️🛡️"
+                icon={<span className="text-xl">👼</span>}
+                title="GUARDIAN ANGEL 👼"
                 subtitle="Crewmate only. Sees an impostor's clue and defends them during discussion so others don't vote them out."
-                checked={g.evilGuardianEnabled}
+                checked={g.guardianAngelEnabled}
                 onChange={(b) => {
                   if (isOnline && !isHost) {
                     toast.info("Only the Host can change this option");
                     return;
                   }
-                  g.setEvilGuardianEnabled(b);
+                  g.setGuardianAngelEnabled(b);
                 }}
               />
 
@@ -412,6 +413,21 @@ export function Lobby() {
                     return;
                   }
                   g.setExtraVoterEnabled(b);
+                }}
+              />
+
+              {/* The Bounty Hunter */}
+              <ToggleRow
+                icon={<Target className="h-5 w-5 text-red-500" />}
+                title="BOUNTY HUNTER 🎯"
+                subtitle="Crewmate only. Secretly assigned a bounty target to convince everyone to vote out."
+                checked={g.bountyHunterEnabled}
+                onChange={(b) => {
+                  if (isOnline && !isHost) {
+                    toast.info("Only the Host can change this option");
+                    return;
+                  }
+                  g.setBountyHunterEnabled(b);
                 }}
               />
             </div>
