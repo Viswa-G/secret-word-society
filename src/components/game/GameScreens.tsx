@@ -1177,24 +1177,59 @@ function ClassicDiscussScreen() {
 
       {/* Room Accusation Modal */}
       {isAccusing && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-3 sm:p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-card rounded-3xl p-5 card-shadow border-2 border-foreground space-y-3.5 animate-in slide-in-from-bottom-6">
-            <div className="flex items-center justify-between pb-1 border-b border-border/50">
-              <div>
-                <span className="text-[10px] font-black tracking-widest text-pink uppercase block">
-                  ROOM ACCUSATION &amp; VOTING
-                </span>
-                <h3 className="font-display text-xl font-black text-foreground">
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setIsAccusing(false)}
+        >
+          <div
+            className="w-full sm:max-w-md bg-card rounded-t-[32px] sm:rounded-3xl border-t sm:border-2 border-border/80 sm:border-foreground shadow-2xl p-5 pb-7 sm:pb-6 space-y-3.5 max-h-[92vh] flex flex-col animate-in slide-in-from-bottom duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Mobile drag handle indicator */}
+            <div className="w-10 h-1.5 rounded-full bg-muted-foreground/25 mx-auto -mt-1 mb-1 sm:hidden shrink-0" />
+
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 pb-2.5 border-b border-border/50 shrink-0">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black tracking-wider uppercase text-pink bg-pink/10 px-2.5 py-0.5 rounded-full">
+                    <Target className="h-3 w-3" /> ROOM ACCUSATION
+                  </span>
+                  {actualImposterCount > 1 && (
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                      👥 {actualImposterCount} Impostors
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-display text-xl sm:text-2xl font-black text-foreground leading-tight">
                   Who did the room vote out?
                 </h3>
+                <p className="text-xs font-semibold text-muted-foreground mt-0.5">
+                  {actualImposterCount > 1
+                    ? `Select 1 or up to ${actualImposterCount} suspects decided by group`
+                    : "Tap the player the room agreed to eliminate"}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAccusing(false)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition"
-              >
-                <X className="h-6 w-6" />
-              </button>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <div
+                  className={`px-2.5 py-1 rounded-full text-xs font-display font-black border transition-all ${
+                    selectedAccused.length > 0
+                      ? "bg-pink text-white border-pink shadow-xs"
+                      : "bg-secondary text-muted-foreground border-border"
+                  }`}
+                >
+                  {selectedAccused.length}/{actualImposterCount}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAccusing(false)}
+                  className="h-8 w-8 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {suspenseState === "revealed" && selectedAccused.length > 0 ? (
@@ -1274,7 +1309,7 @@ function ClassicDiscussScreen() {
                         >
                           {accused.isImposter ? "IMPOSTOR" : "INNOCENT"}
                         </span>
-                        <h4 className="font-display text-xl font-black mt-0.5 truncate">
+                        <h4 className="font-display text-lg sm:text-xl font-black mt-0.5 truncate">
                           {accused.playerName}
                         </h4>
                       </div>
@@ -1312,7 +1347,7 @@ function ClassicDiscussScreen() {
                   <button
                     type="button"
                     onClick={handleGoToFullResults}
-                    className="w-full rounded-2xl bg-lime py-4 font-display font-black text-foreground btn-3d text-base"
+                    className="w-full rounded-2xl bg-lime py-3.5 font-display font-black text-foreground btn-3d text-base"
                   >
                     VIEW FULL MATCH RESULTS &amp; WORD
                   </button>
@@ -1339,51 +1374,9 @@ function ClassicDiscussScreen() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {/* Match Imposter Count & Selection Counter */}
-                <div
-                  className={`rounded-2xl p-2.5 border flex items-center justify-between ${
-                    actualImposterCount > 1
-                      ? "bg-amber-500/10 border-amber-500/30 text-foreground"
-                      : "bg-secondary/60 border-border text-foreground"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className={`h-7 w-7 rounded-lg grid place-items-center text-xs font-black ${
-                        actualImposterCount > 1
-                          ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                          : "bg-primary/20 text-foreground"
-                      }`}
-                    >
-                      {actualImposterCount > 1 ? "👥" : "🎯"}
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-wider leading-none">
-                        {actualImposterCount > 1
-                          ? `${actualImposterCount} IMPOSTORS IN THIS MATCH`
-                          : "1 IMPOSTOR IN THIS MATCH"}
-                      </p>
-                      <p className="text-[10px] font-semibold text-muted-foreground mt-0.5">
-                        {actualImposterCount > 1
-                          ? `Select 1 or up to ${actualImposterCount} suspects`
-                          : "Tap the player the room agreed to eliminate"}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className={`px-3 py-1 rounded-full text-xs font-display font-black border transition-all ${
-                      selectedAccused.length > 0
-                        ? "bg-pink text-white border-pink card-shadow"
-                        : "bg-secondary text-muted-foreground border-border"
-                    }`}
-                  >
-                    {selectedAccused.length} / {actualImposterCount}
-                  </div>
-                </div>
-
-                {/* Player Selection Cards */}
-                <div className="grid grid-cols-2 gap-2.5 max-h-[42vh] overflow-y-auto pr-1 py-1">
+              <div className="space-y-3 flex flex-col min-h-0 flex-1">
+                {/* Player Selection List (Responsive 1-column for mobile perfection) */}
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 py-1 max-h-[46vh] sm:max-h-[50vh]">
                   {g.assignments.map((assignment, index) => {
                     const selectedIndex = selectedAccused.findIndex(
                       (a) => a.playerName === assignment.playerName,
@@ -1405,39 +1398,45 @@ function ClassicDiscussScreen() {
                         key={assignment.playerName}
                         type="button"
                         onClick={() => handleTogglePlayer(assignment)}
-                        className={`relative p-3 rounded-2xl border-2 text-left transition-all duration-200 flex items-center gap-2.5 cursor-pointer select-none active:scale-[0.97] ${
+                        className={`w-full relative px-3.5 py-2.5 rounded-2xl border-2 text-left transition-all duration-150 flex items-center justify-between gap-3 cursor-pointer select-none active:scale-[0.98] ${
                           isSelected
-                            ? "bg-pink text-white border-pink card-shadow ring-2 ring-pink/30 shadow-md"
-                            : "bg-card hover:bg-secondary/70 text-foreground border-border/80 card-shadow hover:border-border"
+                            ? "bg-pink/10 border-pink shadow-xs ring-2 ring-pink/20"
+                            : "bg-secondary/35 hover:bg-secondary/60 text-foreground border-border/80 hover:border-border"
                         }`}
                       >
-                        {/* Avatar Badge */}
-                        <div
-                          className={`h-9 w-9 rounded-xl border flex items-center justify-center font-display font-black text-sm shrink-0 transition-colors ${
-                            isSelected ? "bg-white/20 text-white border-white/40" : tint
-                          }`}
-                        >
-                          {assignment.playerName.charAt(0).toUpperCase()}
+                        {/* Left: Avatar + Name + Suspect tag */}
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div
+                            className={`h-10 w-10 rounded-xl border-2 flex items-center justify-center font-display font-black text-sm shrink-0 transition-colors ${
+                              isSelected ? "bg-pink text-white border-pink shadow-xs" : tint
+                            }`}
+                          >
+                            {assignment.playerName.charAt(0).toUpperCase()}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-display font-black text-base leading-tight truncate text-foreground">
+                                {assignment.playerName}
+                              </span>
+                              {actualImposterCount > 1 && isSelected && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-pink text-white shadow-2xs shrink-0">
+                                  Suspect #{selectedIndex + 1}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-medium text-muted-foreground truncate mt-0.5">
+                              {isSelected ? "Marked for elimination" : "Tap to accuse"}
+                            </p>
+                          </div>
                         </div>
 
-                        {/* Name & Selected order badge */}
-                        <div className="min-w-0 flex-1">
-                          <span className="block truncate font-display font-extrabold text-sm sm:text-base leading-tight">
-                            {assignment.playerName}
-                          </span>
-                          {actualImposterCount > 1 && isSelected && (
-                            <span className="inline-block text-[9px] font-black uppercase tracking-wider bg-white/25 text-white px-1.5 py-0.5 rounded-sm mt-0.5">
-                              Suspect #{selectedIndex + 1}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Checkbox indicator */}
+                        {/* Right: Crisp Checkbox Indicator */}
                         <div
-                          className={`h-5 w-5 rounded-md border grid place-items-center shrink-0 transition-all ${
+                          className={`h-6 w-6 rounded-full border-2 grid place-items-center shrink-0 transition-all ${
                             isSelected
-                              ? "bg-white text-pink border-white font-black scale-105"
-                              : "border-border/80 bg-secondary/30 text-transparent"
+                              ? "bg-pink border-pink text-white scale-105 shadow-xs"
+                              : "border-muted-foreground/30 bg-background/80 text-transparent"
                           }`}
                         >
                           <Check className="h-3.5 w-3.5 stroke-3" />
@@ -1449,20 +1448,22 @@ function ClassicDiscussScreen() {
 
                 {/* Reveal Action Button */}
                 {selectedAccused.length > 0 ? (
-                  <div className="pt-2 space-y-2 animate-in fade-in">
+                  <div className="pt-2 space-y-2 shrink-0 animate-in fade-in">
                     <button
                       type="button"
                       onClick={handleRevealAccused}
-                      className="w-full rounded-2xl bg-destructive py-4 font-display font-black text-white btn-3d text-base flex items-center justify-center gap-2 shadow-lg hover:brightness-105 active:scale-[0.98] transition"
+                      className="w-full rounded-2xl bg-destructive py-3.5 px-4 font-display font-black text-white btn-3d text-base flex items-center justify-center gap-2 shadow-lg hover:brightness-105 active:scale-[0.98] transition cursor-pointer"
                     >
-                      <Users className="h-5 w-5" />
-                      {selectedAccused.length === 1
-                        ? `REVEAL ${selectedAccused[0].playerName.toUpperCase()}'S IDENTITY`
-                        : `REVEAL BOTH IDENTITIES (${selectedAccused.map((a) => a.playerName.toUpperCase()).join(" & ")})`}
+                      <Users className="h-5 w-5 shrink-0" />
+                      <span className="truncate">
+                        {selectedAccused.length === 1
+                          ? `REVEAL ${selectedAccused[0].playerName.toUpperCase()}'S IDENTITY`
+                          : `REVEAL ACCUSED ROLES (${selectedAccused.map((a) => a.playerName.toUpperCase()).join(" & ")})`}
+                      </span>
                     </button>
                   </div>
                 ) : (
-                  <div className="pt-2 space-y-2">
+                  <div className="pt-2 space-y-2 shrink-0">
                     <button
                       type="button"
                       disabled
@@ -1473,7 +1474,7 @@ function ClassicDiscussScreen() {
                         ? `UP TO ${actualImposterCount} SUSPECTS`
                         : "A SUSPECT"}
                     </button>
-                    <div className="pt-1 text-center">
+                    <div className="pt-0.5 text-center">
                       <button
                         type="button"
                         onClick={handleGoToFullResults}
