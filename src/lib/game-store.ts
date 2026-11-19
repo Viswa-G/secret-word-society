@@ -47,6 +47,29 @@ export type VotingRoundHistory = {
   wasImposter: boolean;
 };
 
+export type MatchHistoryPlayer = {
+  playerName: string;
+  isImposter: boolean;
+  specialRole?: SpecialRole | null;
+  clue?: string;
+  guardianAngelClue?: string;
+  bountyTargetName?: string;
+  wasAccused?: boolean;
+};
+
+export type MatchHistoryEntry = {
+  id: string;
+  timestamp: number;
+  gameMode: "classic" | "online";
+  word: string;
+  category: string;
+  winner: "crew" | "imposter" | "unknown";
+  outcome: "flawless_crew" | "partial_crew" | "imposters_win" | "direct_reveal";
+  imposterCount: number;
+  accusedPlayerNames: string[];
+  players: MatchHistoryPlayer[];
+};
+
 type GameState = {
   // Lobby / Config
   gameMode: "classic" | "online";
@@ -118,6 +141,15 @@ type GameState = {
   };
   recordWin: (winner: "crew" | "imposter") => void;
   resetScore: () => void;
+
+  // Match History
+  matchHistory: MatchHistoryEntry[];
+  currentRoundId: string | null;
+  recordMatchHistory: (
+    entry: Omit<MatchHistoryEntry, "id" | "timestamp"> & { id?: string; timestamp?: number },
+  ) => void;
+  deleteMatchHistoryEntry: (id: string) => void;
+  clearMatchHistory: () => void;
 
   startGame: () => void;
   markViewed: () => void;
@@ -228,6 +260,9 @@ export const useGame = create<GameState>()(
         crewWins: 0,
         imposterWins: 0,
       },
+
+      matchHistory: [],
+      currentRoundId: null,
 
       phase: "lobby",
       word: null,
@@ -371,20 +406,85 @@ export const useGame = create<GameState>()(
           classicAccusedPlayerName: names[0] || null,
         }),
       recordWin: (winner) =>
-        set((state) => ({
-          score: {
+        set((state) => {
+          const newScore = {
             ...state.score,
             crewWins: winner === "crew" ? state.score.crewWins + 1 : state.score.crewWins,
             imposterWins:
               winner === "imposter" ? state.score.imposterWins + 1 : state.score.imposterWins,
-          },
-        })),
+          };
+
+          // Also update the winner in history if this round was already recorded
+          const roundId = state.currentRoundId;
+          let updatedHistory = state.matchHistory;
+          if (roundId) {
+            const idx = state.matchHistory.findIndex((m) => m.id === roundId);
+            if (idx >= 0) {
+              const item = { ...state.matchHistory[idx] };
+              item.winner = winner;
+              if (winner === "crew" && item.outcome === "imposters_win") {
+                item.outcome = "flawless_crew";
+              } else if (winner === "imposter" && item.outcome === "flawless_crew") {
+                item.outcome = "imposters_win";
+              }
+              updatedHistory = [...state.matchHistory];
+              updatedHistory[idx] = item;
+            }
+          }
+
+          return {
+            score: newScore,
+            matchHistory: updatedHistory,
+          };
+        }),
       resetScore: () =>
         set({
           score: {
             crewWins: 0,
             imposterWins: 0,
           },
+        }),
+      recordMatchHistory: (entry) => {
+        const roundId =
+          entry.id ||
+          get().currentRoundId ||
+          `match_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        set((state) => {
+          const existingIdx = state.matchHistory.findIndex((m) => m.id === roundId);
+          const historyEntry: MatchHistoryEntry = {
+            id: roundId,
+            timestamp:
+              entry.timestamp ||
+              (existingIdx >= 0 ? state.matchHistory[existingIdx].timestamp : Date.now()),
+            gameMode: entry.gameMode,
+            word: entry.word,
+            category: entry.category,
+            winner: entry.winner,
+            outcome: entry.outcome,
+            imposterCount: entry.imposterCount,
+            accusedPlayerNames: entry.accusedPlayerNames,
+            players: entry.players,
+          };
+
+          if (existingIdx >= 0) {
+            const copy = [...state.matchHistory];
+            copy[existingIdx] = historyEntry;
+            return { matchHistory: copy, currentRoundId: roundId };
+          } else {
+            return {
+              matchHistory: [historyEntry, ...state.matchHistory].slice(0, 100),
+              currentRoundId: roundId,
+            };
+          }
+        });
+      },
+      deleteMatchHistoryEntry: (id) =>
+        set((state) => ({
+          matchHistory: state.matchHistory.filter((m) => m.id !== id),
+        })),
+      clearMatchHistory: () =>
+        set({
+          matchHistory: [],
         }),
       setImposterHintEnabled: (b) => {
         set({ imposterHintEnabled: b });
@@ -533,6 +633,7 @@ export const useGame = create<GameState>()(
           a.bountyTargetId = specialRoleAssignments[i].bountyTargetId;
         });
 
+        const roundId = `round_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         set({
           phase: "reveal",
           word,
@@ -542,6 +643,7 @@ export const useGame = create<GameState>()(
           cardViewed: false,
           classicAccusedPlayerName: null,
           classicAccusedPlayerNames: [],
+          currentRoundId: roundId,
         });
       },
       markViewed: () => set({ cardViewed: true }),
@@ -589,6 +691,7 @@ export const useGame = create<GameState>()(
             cardViewed: false,
             classicAccusedPlayerName: null,
             classicAccusedPlayerNames: [],
+            currentRoundId: null,
           });
         }
       },
@@ -822,6 +925,9 @@ export const useGame = create<GameState>()(
             typeof p === "string" && p.toLowerCase() === "subash" ? "Zoro" : p,
           );
         }
+        if (!state.matchHistory || !Array.isArray(state.matchHistory)) {
+          state.matchHistory = [];
+        }
         return state as GameState;
       },
       onRehydrateStorage: () => (state) => {
@@ -845,6 +951,7 @@ export const useGame = create<GameState>()(
         extraVoterEnabled: state.extraVoterEnabled,
         bountyHunterEnabled: state.bountyHunterEnabled,
         score: state.score,
+        matchHistory: state.matchHistory,
         localPlayer: state.localPlayer,
       }),
     },

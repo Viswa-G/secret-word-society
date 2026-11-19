@@ -21,7 +21,9 @@ import {
   AlertCircle,
   Trophy,
   Users,
+  History,
 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useGame, type Player, type ChatMessage, type Assignment } from "@/lib/game-store";
 import { sounds } from "@/lib/sounds";
 import { toast } from "sonner";
@@ -1754,6 +1756,46 @@ function OnlineResultScreen() {
   const secretWord = g.word;
   const hintWord = imposters.find((imp) => imp.clue)?.clue;
 
+  useEffect(() => {
+    if (g.word && g.assignments.length > 0 && g.onlineWinner) {
+      const winner = g.onlineWinner;
+      const outcome = winner === "crew" ? "flawless_crew" : "imposters_win";
+      const eliminatedPlayerIds = g.votingHistory
+        .map((h) => h.eliminatedPlayerId)
+        .filter(Boolean) as string[];
+      const eliminatedPlayerNames = eliminatedPlayerIds
+        .map((id) => g.onlinePlayers.find((p) => p.id === id)?.name)
+        .filter(Boolean) as string[];
+
+      g.recordMatchHistory({
+        word: g.word,
+        category: g.category || "General",
+        gameMode: "online",
+        winner,
+        outcome,
+        imposterCount: imposters.length,
+        accusedPlayerNames: eliminatedPlayerNames,
+        players: g.assignments.map((a) => ({
+          playerName: a.playerName,
+          isImposter: a.isImposter,
+          specialRole: a.specialRole,
+          clue: a.clue,
+          guardianAngelClue: a.guardianAngelClue,
+          bountyTargetName: a.bountyTargetName,
+          wasAccused: eliminatedPlayerNames.includes(a.playerName),
+        })),
+      });
+    }
+  }, [
+    g.word,
+    g.category,
+    g.assignments,
+    g.onlineWinner,
+    imposters.length,
+    g.votingHistory,
+    g.onlinePlayers,
+  ]);
+
   return (
     <div className="min-h-dvh bg-background flex flex-col">
       <div className="mx-auto w-full max-w-md px-4">
@@ -1895,6 +1937,15 @@ function OnlineResultScreen() {
           >
             BACK TO LOBBY
           </button>
+
+          <div className="flex justify-center pt-1">
+            <Link
+              to="/history"
+              className="text-xs font-extrabold text-pink hover:text-pink/80 flex items-center gap-1.5 transition py-1"
+            >
+              <History className="h-3.5 w-3.5" /> View Match History →
+            </Link>
+          </div>
         </div>
       </div>
     </div>
@@ -1929,7 +1980,48 @@ function ClassicResultScreen() {
         sounds.playDefeat();
       }
     }
-  }, [accusedAssignments.length, allCaught, partialCaught]);
+
+    // Automatically record this match in history
+    if (g.word && g.assignments.length > 0) {
+      const outcome =
+        accusedNames.length === 0
+          ? "direct_reveal"
+          : allCaught
+            ? "flawless_crew"
+            : partialCaught
+              ? "partial_crew"
+              : "imposters_win";
+      const winner =
+        outcome === "flawless_crew" ? "crew" : outcome === "direct_reveal" ? "unknown" : "imposter";
+
+      g.recordMatchHistory({
+        word: g.word,
+        category: g.category || "General",
+        gameMode: "classic",
+        winner,
+        outcome,
+        imposterCount: imposters.length,
+        accusedPlayerNames: accusedNames,
+        players: g.assignments.map((a) => ({
+          playerName: a.playerName,
+          isImposter: a.isImposter,
+          specialRole: a.specialRole,
+          clue: a.clue,
+          guardianAngelClue: a.guardianAngelClue,
+          bountyTargetName: a.bountyTargetName,
+          wasAccused: accusedNames.includes(a.playerName),
+        })),
+      });
+    }
+  }, [
+    accusedAssignments.length,
+    allCaught,
+    partialCaught,
+    g.word,
+    g.category,
+    g.assignments,
+    accusedNames.length,
+  ]);
 
   return (
     <div className="min-h-dvh bg-background flex flex-col animate-in fade-in">
@@ -2075,28 +2167,36 @@ function ClassicResultScreen() {
               </span>
             </div>
           </div>
-          <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-border/40">
-            <span className="text-[10px] font-bold text-muted-foreground">Adjust Round:</span>
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playTap();
-                g.recordWin("crew");
-              }}
-              className="px-2 py-0.5 rounded-md bg-secondary text-[11px] font-black text-foreground hover:bg-secondary/80 active:scale-95 transition"
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-2 pt-2 border-t border-border/40">
+            <Link
+              to="/history"
+              className="text-xs font-extrabold text-pink hover:text-pink/80 flex items-center gap-1 transition"
             >
-              +1 Crew
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playTap();
-                g.recordWin("imposter");
-              }}
-              className="px-2 py-0.5 rounded-md bg-secondary text-[11px] font-black text-foreground hover:bg-secondary/80 active:scale-95 transition"
-            >
-              +1 Impostor
-            </button>
+              <History className="h-3.5 w-3.5" /> View Match History →
+            </Link>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-muted-foreground">Adjust:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  g.recordWin("crew");
+                }}
+                className="px-2 py-0.5 rounded-md bg-secondary text-[11px] font-black text-foreground hover:bg-secondary/80 active:scale-95 transition"
+              >
+                +1 Crew
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  g.recordWin("imposter");
+                }}
+                className="px-2 py-0.5 rounded-md bg-secondary text-[11px] font-black text-foreground hover:bg-secondary/80 active:scale-95 transition"
+              >
+                +1 Impostor
+              </button>
+            </div>
           </div>
         </div>
 

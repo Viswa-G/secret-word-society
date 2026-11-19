@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as WordBoxRouteImport } from './routes/word-box'
 import { Route as ApiActionRouteImport } from './routes/api/action'
 import { Route as ApiEventsRouteImport } from './routes/api/events'
@@ -18,6 +19,11 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WordBoxRoute = WordBoxRouteImport.update({
@@ -43,6 +49,7 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/history': typeof HistoryRoute
   '/word-box': typeof WordBoxRoute
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/history': typeof HistoryRoute
   '/word-box': typeof WordBoxRoute
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/history': typeof HistoryRoute
   '/word-box': typeof WordBoxRoute
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
@@ -65,12 +74,25 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/word-box' | '/api/action' | '/api/events' | '/api/health'
+  fullPaths:
+    | '/'
+    | '/history'
+    | '/word-box'
+    | '/api/action'
+    | '/api/events'
+    | '/api/health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/word-box' | '/api/action' | '/api/events' | '/api/health'
+  to:
+    | '/'
+    | '/history'
+    | '/word-box'
+    | '/api/action'
+    | '/api/events'
+    | '/api/health'
   id:
     | '__root__'
     | '/'
+    | '/history'
     | '/word-box'
     | '/api/action'
     | '/api/events'
@@ -79,6 +101,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HistoryRoute: typeof HistoryRoute
   WordBoxRoute: typeof WordBoxRoute
   ApiActionRoute: typeof ApiActionRoute
   ApiEventsRoute: typeof ApiEventsRoute
@@ -92,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/word-box': {
@@ -127,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HistoryRoute: HistoryRoute,
   WordBoxRoute: WordBoxRoute,
   ApiActionRoute: ApiActionRoute,
   ApiEventsRoute: ApiEventsRoute,

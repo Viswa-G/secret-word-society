@@ -21,6 +21,7 @@ import {
   Volume2,
   VolumeX,
   Trophy,
+  History,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
@@ -128,68 +129,110 @@ export function Lobby() {
   return (
     <div className="min-h-dvh bg-background pb-8">
       <div className="mx-auto max-w-md px-4 pt-4">
-        {/* Header */}
-        <div className="relative flex items-center justify-center pt-2">
+        {/* Header Bar */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center pt-2">
           {/* Sound Mute Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              const next = sounds.toggleMute();
-              setIsMuted(next);
-              if (!next) sounds.playTap();
-            }}
-            className="absolute left-0 top-1 text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
-            aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
-            title={isMuted ? "Unmute sounds" : "Mute sounds"}
-          >
-            {isMuted ? (
-              <VolumeX className="h-7 w-7 text-destructive" strokeWidth={2.2} />
-            ) : (
-              <Volume2 className="h-7 w-7 text-foreground/80" strokeWidth={2.2} />
-            )}
-          </button>
+          <div className="flex items-center justify-start">
+            <button
+              type="button"
+              onClick={() => {
+                const next = sounds.toggleMute();
+                setIsMuted(next);
+                if (!next) sounds.playTap();
+              }}
+              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
+              aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
+              title={isMuted ? "Unmute sounds" : "Mute sounds"}
+            >
+              {isMuted ? (
+                <VolumeX className="h-7 w-7 text-destructive" strokeWidth={2.2} />
+              ) : (
+                <Volume2 className="h-7 w-7 text-foreground/80" strokeWidth={2.2} />
+              )}
+            </button>
+          </div>
 
-          <h1 className="font-display text-5xl leading-[0.9] font-extrabold text-center text-foreground/85 tracking-tight">
-            IMPOSTER
-            <br />
-            <span className="text-6xl">WHO?</span>
-          </h1>
-          <Link
-            to="/word-box"
-            className="absolute right-0 top-1 text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition"
-            aria-label="Word Box"
-            title="Word Box"
-          >
-            <Box className="h-7 w-7 text-foreground/80" strokeWidth={2.4} />
-          </Link>
+          {/* Game Logo Badge (matches in-game header) */}
+          <div className="flex items-center justify-center">
+            <div className="grid h-16 w-16 place-items-center rounded-2xl bg-lime card-shadow select-none">
+              <div className="text-center font-display font-extrabold leading-none text-foreground">
+                <div className="text-[10px]">IMPOSTER</div>
+                <div className="text-lg">WHO?</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Action Icons: History & Word Box */}
+          <div className="flex items-center justify-end gap-1">
+            <Link
+              to="/history"
+              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
+              aria-label="Match History"
+              title="Match History"
+            >
+              <History className="h-7 w-7 text-foreground/80" strokeWidth={2.3} />
+            </Link>
+            <Link
+              to="/word-box"
+              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
+              aria-label="Word Box"
+              title="Word Box"
+            >
+              <Box className="h-7 w-7 text-foreground/80" strokeWidth={2.4} />
+            </Link>
+          </div>
         </div>
 
         {/* Session Score Banner in Lobby */}
-        {g.score && (g.score.crewWins > 0 || g.score.imposterWins > 0) && (
+        {((g.score && (g.score.crewWins > 0 || g.score.imposterWins > 0)) ||
+          (g.matchHistory && g.matchHistory.length > 0)) && (
           <div className="mt-4 rounded-2xl bg-card p-3 card-shadow border border-border/80 flex items-center justify-between animate-in fade-in">
-            <div className="flex items-center gap-2.5">
+            <Link
+              to="/history"
+              className="flex items-center gap-2.5 hover:opacity-85 transition text-left group"
+            >
               <span className="text-xl">🏆</span>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground leading-none">
-                  Session Score
+                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground leading-none flex items-center gap-1.5">
+                  Session Score{" "}
+                  <span className="text-[9px] text-pink font-bold group-hover:underline">
+                    History →
+                  </span>
                 </p>
                 <div className="flex items-center gap-2.5 text-xs font-black text-foreground mt-1">
                   <span className="text-lime-600 dark:text-lime-400">Crew: {g.score.crewWins}</span>
                   <span className="text-muted-foreground/30">•</span>
                   <span className="text-pink">Impostors: {g.score.imposterWins}</span>
+                  {g.matchHistory && g.matchHistory.length > 0 && (
+                    <>
+                      <span className="text-muted-foreground/30">•</span>
+                      <span className="text-muted-foreground text-[11px] font-semibold">
+                        {g.matchHistory.length} {g.matchHistory.length === 1 ? "round" : "rounds"}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
+            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                to="/history"
+                className="text-[11px] font-extrabold text-foreground bg-secondary hover:bg-secondary/80 px-2.5 py-1 rounded-lg transition flex items-center gap-1"
+              >
+                <History className="h-3 w-3" />
+                History
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  sounds.playTap();
+                  g.resetScore();
+                }}
+                className="text-[11px] font-bold text-muted-foreground/70 hover:text-foreground px-2 py-1 rounded-lg hover:bg-secondary transition cursor-pointer"
+              >
+                Reset
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                sounds.playTap();
-                g.resetScore();
-              }}
-              className="text-[11px] font-bold text-muted-foreground/70 hover:text-foreground px-2 py-1 rounded-lg hover:bg-secondary transition cursor-pointer"
-            >
-              Reset
-            </button>
           </div>
         )}
 
