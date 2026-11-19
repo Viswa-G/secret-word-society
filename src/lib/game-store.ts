@@ -119,6 +119,7 @@ type GameState = {
   addPlayer: (name: string) => void;
   removePlayer: (i: number) => void;
   updatePlayer: (i: number, name: string) => void;
+  movePlayer: (from: number, to: number) => void;
   setCategories: (c: string[]) => void;
   toggleCategory: (id: string) => void;
   setCustomCategories: (cats: Category[]) => void;
@@ -314,6 +315,13 @@ export const useGame = create<GameState>()(
       updatePlayer: (i, name) => {
         const players = [...get().players];
         players[i] = name;
+        set({ players });
+      },
+      movePlayer: (from, to) => {
+        const players = [...get().players];
+        if (from < 0 || from >= players.length || to < 0 || to >= players.length) return;
+        const [moved] = players.splice(from, 1);
+        players.splice(to, 0, moved);
         set({ players });
       },
       setCategories: (c) => set({ categories: c }),
@@ -629,7 +637,11 @@ export const useGame = create<GameState>()(
 
         const chosenImposterNames = new Set(selectImposters(players, imposterCount));
 
-        const playOrder = shuffleIndexes(players.length);
+        // In classic mode, passing follows the circle seating order arranged in lobby
+        const playOrder =
+          get().gameMode === "classic"
+            ? Array.from({ length: players.length }, (_, i) => i)
+            : shuffleIndexes(players.length);
 
         const assignments: Assignment[] = playOrder.map((pi, seatIdx) => {
           const playerName = players[pi];

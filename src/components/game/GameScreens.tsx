@@ -22,8 +22,13 @@ import {
   Trophy,
   Users,
   History,
+  Share2,
+  Smartphone,
+  UserCheck,
+  Copy,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { format } from "date-fns";
 import { useGame, type Player, type ChatMessage, type Assignment } from "@/lib/game-store";
 import { sounds } from "@/lib/sounds";
 import { toast } from "sonner";
@@ -362,6 +367,7 @@ export function RevealScreen() {
   const g = useGame();
   const [flipped, setFlipped] = useState(false);
   const [flippedOnce, setFlippedOnce] = useState(false);
+  const [isHandedOver, setIsHandedOver] = useState(false);
   const holdTimer = useRef<number | null>(null);
 
   const isOnline = g.gameMode === "online";
@@ -372,6 +378,7 @@ export function RevealScreen() {
   useEffect(() => {
     setFlipped(false);
     setFlippedOnce(false);
+    setIsHandedOver(false);
   }, [g.currentPlayerIndex]);
 
   const assignment = g.assignments[g.currentPlayerIndex];
@@ -399,6 +406,70 @@ export function RevealScreen() {
   }
 
   if (!assignment) return null;
+
+  // Anti-Peek Hand-Off Screen for Classic Pass & Play
+  if (!isOnline && !isHandedOver) {
+    return (
+      <div className="min-h-dvh bg-background flex flex-col animate-in fade-in">
+        <div className="mx-auto w-full max-w-md px-4">
+          <TopBar onClose={g.exitToLobby} />
+        </div>
+
+        <div className="mx-auto w-full max-w-md flex-1 px-4 flex flex-col items-center justify-between py-6 text-center">
+          {/* Seating Order Indicator */}
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary text-xs font-black uppercase text-foreground/80 border border-border">
+              <Users className="h-3.5 w-3.5 text-pink" /> Player {g.currentPlayerIndex + 1} of{" "}
+              {g.assignments.length}
+            </span>
+          </div>
+
+          {/* Hand-off Spotlight */}
+          <div className="w-full flex flex-col items-center space-y-4 my-auto">
+            <div className="relative">
+              <div className="h-24 w-24 rounded-3xl bg-lime/20 border-2 border-lime/50 grid place-items-center card-shadow animate-bounce">
+                <Smartphone className="h-12 w-12 text-foreground" strokeWidth={2.2} />
+              </div>
+              <span className="absolute -top-2 -right-2 text-2xl">🤫</span>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-black uppercase tracking-widest text-muted-foreground block">
+                Pass the phone to
+              </span>
+              <h1 className="font-display text-4xl sm:text-5xl font-black uppercase tracking-tight text-foreground drop-shadow-sm">
+                {assignment.playerName}
+              </h1>
+            </div>
+
+            {/* Privacy Warning */}
+            <div className="rounded-2xl bg-secondary/60 border border-border/80 px-4 py-3 max-w-xs mx-auto text-xs font-semibold text-foreground/80 leading-relaxed card-shadow">
+              🙈 <strong className="text-foreground">Anti-Peek:</strong> Hand the phone over
+              privately so nobody else sees your secret card!
+            </div>
+          </div>
+
+          {/* Action Button: I am [Player Name] */}
+          <div className="w-full space-y-2 select-none">
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                setIsHandedOver(true);
+              }}
+              className="w-full rounded-2xl bg-lime py-4.5 font-display text-xl font-extrabold text-foreground btn-3d active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <UserCheck className="h-6 w-6" strokeWidth={2.5} /> I AM{" "}
+              {assignment.playerName.toUpperCase()}
+            </button>
+            <p className="text-center text-xs font-semibold text-muted-foreground">
+              Tap when you are holding the phone privately
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const cardColor = assignment.isImposter ? "bg-[oklch(0.82_0.15_60)]" : "bg-yellow";
   const softColor = assignment.isImposter ? "bg-[oklch(0.9_0.1_60)]" : "bg-[oklch(0.94_0.11_100)]";
@@ -1760,6 +1831,7 @@ export function VoteScreen() {
 
 function OnlineResultScreen() {
   const g = useGame();
+  const [showRecapModal, setShowRecapModal] = useState(false);
   const imposters = g.assignments.filter((a) => a.isImposter);
   const me = g.onlinePlayers.find((p) => p.id === g.localPlayer.id);
   const isHost = me ? me.isHost : false;
@@ -1929,6 +2001,18 @@ function OnlineResultScreen() {
             </div>
           )}
 
+          {/* WhatsApp Match Recap */}
+          <button
+            type="button"
+            onClick={() => {
+              sounds.playTap();
+              setShowRecapModal(true);
+            }}
+            className="w-full rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white py-3.5 font-display text-sm font-extrabold card-shadow active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer btn-3d"
+          >
+            <Share2 className="h-4.5 w-4.5" /> SHARE MATCH RECAP (WHATSAPP / STORY)
+          </button>
+
           <button
             onClick={g.exitToLobby}
             className="w-full rounded-2xl bg-secondary py-3.5 font-display font-bold text-foreground card-shadow hover:bg-secondary/70 active:scale-95 transition"
@@ -1946,12 +2030,189 @@ function OnlineResultScreen() {
           </div>
         </div>
       </div>
+
+      {showRecapModal && (
+        <MatchRecapModal
+          onClose={() => setShowRecapModal(false)}
+          word={g.word || ""}
+          category={g.category || "General"}
+          assignments={g.assignments}
+          accusedNames={
+            g.votingHistory
+              .map((h) => g.onlinePlayers.find((p) => p.id === h.eliminatedPlayerId)?.name)
+              .filter(Boolean) as string[]
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---------------- MATCH RECAP MODAL (WHATSAPP / STORY) ---------------- */
+
+function MatchRecapModal({
+  onClose,
+  word,
+  category,
+  assignments,
+  accusedNames,
+}: {
+  onClose: () => void;
+  word: string;
+  category: string;
+  assignments: Assignment[];
+  accusedNames: string[];
+}) {
+  const imposters = assignments.filter((a) => a.isImposter);
+  const imposterDetails = imposters
+    .map((imp) => {
+      const isCaught = accusedNames.includes(imp.playerName);
+      return `${imp.playerName} (${isCaught ? "Caught! 🚨" : "Escaped! 🏃"})`;
+    })
+    .join(", ");
+
+  const specialRolesList: string[] = [];
+  const angel = assignments.find((a) => a.specialRole === "guardian_angel");
+  if (angel) specialRolesList.push(`👼 Angel: ${angel.playerName}`);
+  const initiator = assignments.find((a) => a.specialRole === "initiator");
+  if (initiator) specialRolesList.push(`⚡ Initiator: ${initiator.playerName}`);
+  const voter = assignments.find((a) => a.specialRole === "extra_voter");
+  if (voter) specialRolesList.push(`🗳️ Extra Voter: ${voter.playerName}`);
+  const hunter = assignments.find((a) => a.specialRole === "bounty_hunter");
+  if (hunter) specialRolesList.push(`🎯 Bounty Hunter: ${hunter.playerName}`);
+
+  const dateStr = format(new Date(), "MMM d, yyyy");
+
+  const lines = [
+    "🕵️ IMPOSTER WHO? Match Recap",
+    `🤫 Word: ${word} (${category || "General"})`,
+    `🎭 ${imposters.length === 1 ? "Imposter" : "Imposters"}: ${imposterDetails}`,
+  ];
+  if (specialRolesList.length > 0) {
+    lines.push(specialRolesList.join(" | "));
+  }
+  lines.push(`Played on ${dateStr}`);
+
+  const recapText = lines.join("\n");
+
+  const handleCopy = async () => {
+    sounds.playTap();
+    try {
+      await navigator.clipboard.writeText(recapText);
+      toast.success("Recap copied! Paste into WhatsApp or group chat.");
+    } catch {
+      toast.error("Failed to copy recap text");
+    }
+  };
+
+  const handleShare = async () => {
+    sounds.playTap();
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Imposter Who? Match Recap",
+          text: recapText,
+        });
+        toast.success("Recap shared!");
+        return;
+      } catch {
+        // User cancelled or unsupported, fallback to WhatsApp link
+      }
+    }
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(recapText)}`;
+    window.open(waUrl, "_blank");
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-in fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="mx-auto w-full max-w-md rounded-t-3xl bg-card p-5 pb-6 animate-in slide-in-from-bottom max-h-[90vh] overflow-y-auto border-t-2 border-border"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-muted" />
+        <h2 className="text-center font-display text-xl font-extrabold flex items-center justify-center gap-1.5">
+          <span>📤</span> MATCH RECAP CARD
+        </h2>
+        <p className="mt-1 text-center text-xs text-muted-foreground">
+          Ready to share with your friends on WhatsApp or Story!
+        </p>
+
+        {/* Visual Story / WhatsApp Preview Card */}
+        <div className="mt-4 rounded-2xl bg-zinc-950 text-white p-4.5 border-2 border-yellow/50 card-shadow space-y-3 font-mono text-left select-text">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <span className="font-display font-black text-xs text-yellow tracking-wider uppercase flex items-center gap-1">
+              🕵️ IMPOSTER WHO?
+            </span>
+            <span className="text-[10px] text-zinc-400">{dateStr}</span>
+          </div>
+
+          <div className="space-y-1.5 text-xs">
+            <div className="flex items-start gap-1.5">
+              <span>🤫</span>
+              <span>
+                <strong className="text-zinc-400">Word:</strong>{" "}
+                <span className="text-pink font-bold text-sm">{word}</span>{" "}
+                <span className="text-zinc-500">({category})</span>
+              </span>
+            </div>
+
+            <div className="flex items-start gap-1.5">
+              <span>🎭</span>
+              <span>
+                <strong className="text-zinc-400">
+                  {imposters.length === 1 ? "Imposter" : "Imposters"}:
+                </strong>{" "}
+                <span className="text-destructive font-bold">{imposterDetails}</span>
+              </span>
+            </div>
+
+            {specialRolesList.length > 0 && (
+              <div className="text-[11px] text-zinc-300 pt-1 border-t border-zinc-900">
+                {specialRolesList.join(" • ")}
+              </div>
+            )}
+          </div>
+
+          <div className="text-[10px] text-zinc-500 pt-1 text-right">Played on {dateStr}</div>
+        </div>
+
+        {/* Share & Copy Buttons */}
+        <div className="mt-4 space-y-2 select-none">
+          <button
+            type="button"
+            onClick={handleShare}
+            className="w-full rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white py-3.5 font-display text-base font-extrabold flex items-center justify-center gap-2 btn-3d active:scale-[0.98] transition cursor-pointer"
+          >
+            <Share2 className="h-5 w-5" /> SHARE TO WHATSAPP / APPS
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="w-full rounded-2xl bg-secondary py-3 font-display text-sm font-bold text-foreground hover:bg-secondary/80 flex items-center justify-center gap-2 border border-border/70 active:scale-95 transition cursor-pointer"
+          >
+            <Copy className="h-4 w-4" /> COPY RECAP TEXT
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full text-center text-xs text-muted-foreground font-bold hover:text-foreground pt-1 cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
 function ClassicResultScreen() {
   const g = useGame();
+  const [showRecapModal, setShowRecapModal] = useState(false);
   const imposters = g.assignments.filter((a) => a.isImposter);
 
   const accusedNames =
@@ -2185,6 +2446,18 @@ function ClassicResultScreen() {
           </div>
         </div>
 
+        {/* WhatsApp & Story Match Recap Button */}
+        <button
+          type="button"
+          onClick={() => {
+            sounds.playTap();
+            setShowRecapModal(true);
+          }}
+          className="w-full rounded-2xl bg-[#25D366] hover:bg-[#20ba59] text-white py-3.5 px-4 font-display text-sm font-extrabold card-shadow active:scale-[0.98] transition flex items-center justify-center gap-2 cursor-pointer btn-3d"
+        >
+          <Share2 className="h-4.5 w-4.5" /> SHARE MATCH RECAP (WHATSAPP / STORY)
+        </button>
+
         {/* Quick Rematch & Navigation */}
         <div className="pt-2 space-y-2.5">
           <button
@@ -2210,6 +2483,16 @@ function ClassicResultScreen() {
           </button>
         </div>
       </div>
+
+      {showRecapModal && (
+        <MatchRecapModal
+          onClose={() => setShowRecapModal(false)}
+          word={g.word || ""}
+          category={g.category || "General"}
+          assignments={g.assignments}
+          accusedNames={accusedNames}
+        />
+      )}
     </div>
   );
 }

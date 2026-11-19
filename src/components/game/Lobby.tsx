@@ -23,6 +23,8 @@ import {
   Trophy,
   History,
   Menu,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
@@ -844,26 +846,65 @@ function PlayersSheet({
     );
   }
 
-  // Classic Player Sheet (original)
+  // Classic Player Sheet (with circle seating re-order)
   return (
     <BottomSheet
-      title="EDIT PLAYERS"
-      subtitle="3-20 players • Tap a name to edit"
+      title="SEATING ORDER & PLAYERS"
+      subtitle="Arrange in your circle seating order (clockwise passing)"
       onClose={onClose}
     >
       <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
         {g.players.map((p, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 rounded-full bg-background px-4 py-3 card-shadow">
-              <Pencil className="h-4 w-4 text-muted-foreground" />
+          <div key={i} className="flex items-center gap-1.5">
+            <div className="flex-1 flex items-center gap-2 rounded-2xl bg-background px-3.5 py-2.5 card-shadow border border-border/70">
+              <span className="h-6 w-6 rounded-lg bg-secondary flex items-center justify-center text-[10px] font-black text-muted-foreground shrink-0">
+                #{i + 1}
+              </span>
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
               <input
                 value={p}
                 onChange={(e) => g.updatePlayer(i, e.target.value)}
-                className="flex-1 bg-transparent font-bold outline-none"
+                className="flex-1 bg-transparent font-bold outline-none text-sm text-foreground"
               />
             </div>
-            <button onClick={() => g.removePlayer(i)} className="text-pink p-2" aria-label="Remove">
-              <X className="h-6 w-6" strokeWidth={3} />
+
+            {/* Reorder Buttons */}
+            <div className="flex items-center gap-0.5 bg-secondary/80 rounded-xl p-0.5 border border-border/60">
+              <button
+                type="button"
+                disabled={i === 0}
+                onClick={() => {
+                  sounds.playTap();
+                  g.movePlayer(i, i - 1);
+                }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-20 active:scale-95 transition cursor-pointer"
+                title="Move up"
+                aria-label="Move up"
+              >
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={i === g.players.length - 1}
+                onClick={() => {
+                  sounds.playTap();
+                  g.movePlayer(i, i + 1);
+                }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground disabled:opacity-20 active:scale-95 transition cursor-pointer"
+                title="Move down"
+                aria-label="Move down"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </div>
+
+            <button
+              onClick={() => g.removePlayer(i)}
+              className="text-pink p-1.5 hover:bg-pink/10 rounded-xl transition cursor-pointer"
+              aria-label="Remove"
+              title="Remove player"
+            >
+              <X className="h-5 w-5" strokeWidth={2.5} />
             </button>
           </div>
         ))}
@@ -875,18 +916,21 @@ function PlayersSheet({
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
           placeholder="Add player name"
-          className="flex-1 bg-transparent py-3 outline-none"
+          className="flex-1 bg-transparent py-3 outline-none font-bold text-sm"
         />
-        <button onClick={add} className="grid h-10 w-12 place-items-center rounded-xl bg-yellow">
+        <button
+          onClick={add}
+          className="grid h-10 w-12 place-items-center rounded-xl bg-yellow btn-3d"
+        >
           <Plus className="h-5 w-5" strokeWidth={3} />
         </button>
       </div>
 
       <button
         onClick={onClose}
-        className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background"
+        className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background cursor-pointer"
       >
-        CONFIRM
+        CONFIRM SEATING ORDER
       </button>
     </BottomSheet>
   );
