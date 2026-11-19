@@ -1,4 +1,4 @@
-export type SpecialRole = "guardian_angel" | "initiator" | "extra_voter" | "bounty_hunter";
+export type SpecialRole = "guardian_angel" | "initiator" | "extra_voter" | "bounty_hunter" | "echo";
 
 export type SpecialRoleInfo = {
   id: SpecialRole;
@@ -51,6 +51,17 @@ export const SPECIAL_ROLES_INFO: Record<SpecialRole, SpecialRoleInfo> = {
       "A crewmate whose secret objective is to convince everyone to vote out their assigned bounty target.",
     cardPowerText: "Convince everyone to vote out your bounty target!",
   },
+  echo: {
+    id: "echo",
+    name: "The Echo",
+    icon: "🔁",
+    team: "any",
+    teamLabel: "Crewmate or Impostor",
+    description:
+      "Can give an extra clue back-to-back to prove their innocence, or force any player to immediately give a second clue.",
+    cardPowerText:
+      "Trigger an Echo! Give an extra clue yourself to prove innocence, or force another player to give an immediate second clue!",
+  },
 };
 
 export type SpecialRoleAssignment = {
@@ -65,6 +76,7 @@ export type RoleAssignmentOptions = {
   initiatorEnabled: boolean;
   extraVoterEnabled: boolean;
   bountyHunterEnabled?: boolean;
+  echoEnabled?: boolean;
   availableClues: string[];
 };
 
@@ -170,6 +182,18 @@ export function assignSpecialRoles<
           bountyTargetId: target.playerId,
         };
       }
+    }
+  }
+
+  // 5. Assign The Echo (Crewmate OR Impostor)
+  if (options.echoEnabled) {
+    const eligible = Array.from(unassignedIndices);
+    if (eligible.length > 0) {
+      const chosenIdx = eligible[Math.floor(Math.random() * eligible.length)];
+      unassignedIndices.delete(chosenIdx);
+      result[chosenIdx] = {
+        specialRole: "echo",
+      };
     }
   }
 

@@ -26,6 +26,7 @@ import {
   Smartphone,
   UserCheck,
   Copy,
+  Repeat,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -96,8 +97,9 @@ function SpecialRolesReveal({ assignments }: { assignments: Assignment[] }) {
   const initiator = assignments.find((a) => a.specialRole === "initiator");
   const extraVoter = assignments.find((a) => a.specialRole === "extra_voter");
   const bountyHunter = assignments.find((a) => a.specialRole === "bounty_hunter");
+  const echo = assignments.find((a) => a.specialRole === "echo");
 
-  if (!guardianAngel && !initiator && !extraVoter && !bountyHunter) return null;
+  if (!guardianAngel && !initiator && !extraVoter && !bountyHunter && !echo) return null;
 
   return (
     <div className="rounded-2xl bg-card p-4 card-shadow border border-border/80 space-y-3 text-left">
@@ -200,6 +202,32 @@ function SpecialRolesReveal({ assignments }: { assignments: Assignment[] }) {
               <p className="text-xs text-muted-foreground mt-1 leading-snug">
                 Secret Mission: Convince everyone to eliminate{" "}
                 <span className="font-bold text-foreground">{bountyHunter.bountyTargetName}</span>.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {echo && (
+          <div className="rounded-xl bg-secondary/50 p-3 border border-border/60 flex items-start gap-3">
+            <span className="text-2xl shrink-0">🔁</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1 flex-wrap">
+                <span className="font-display font-extrabold text-sm text-foreground">
+                  {echo.playerName}
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                    echo.isImposter
+                      ? "bg-destructive/15 text-destructive border-destructive/30"
+                      : "bg-emerald-100 text-emerald-900 border-emerald-300"
+                  }`}
+                >
+                  THE ECHO · {echo.isImposter ? "IMPOSTOR" : "CREWMATE"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 leading-snug">
+                Held the power to give an extra clue or force any player to immediately give a
+                second clue.
               </p>
             </div>
           </div>
@@ -696,6 +724,47 @@ export function RevealScreen() {
                       </div>
                     )}
                   </div>
+                ) : assignment.specialRole === "echo" ? (
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-70">
+                    <div
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider border ${
+                        assignment.isImposter
+                          ? "bg-destructive/15 text-destructive border-destructive/30"
+                          : "bg-emerald-100 text-emerald-900 border-emerald-300"
+                      }`}
+                    >
+                      <Repeat className="h-4 w-4 text-emerald-600" /> THE ECHO
+                    </div>
+                    {assignment.isImposter ? (
+                      <div className="space-y-1">
+                        <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
+                          IMPOSTOR!
+                        </p>
+                        {assignment.clue && (
+                          <p className="font-display text-base font-bold text-foreground/80">
+                            Hint: “{assignment.clue}”
+                          </p>
+                        )}
+                        <p className="text-[10px] font-semibold text-muted-foreground mt-1 leading-snug">
+                          Power: Give an extra clue yourself, or force any player to give an
+                          immediate second clue!
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          SECRET WORD
+                        </p>
+                        <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
+                          {g.word}
+                        </p>
+                        <p className="text-[10px] font-semibold text-emerald-800 mt-1 leading-snug">
+                          Power: Give an extra clue yourself to prove innocence, or force any player
+                          to give an immediate second clue!
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : assignment.isImposter ? (
                   <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-1 w-full max-w-70">
                     <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
@@ -760,15 +829,20 @@ export function RevealScreen() {
               g.initiatorEnabled && g.assignments.some((a) => a.specialRole === "initiator");
             const hasExtraVoter =
               g.extraVoterEnabled && g.assignments.some((a) => a.specialRole === "extra_voter");
-            const hasSpecialReveal = hasInitiator || hasExtraVoter;
+            const hasEcho = g.echoEnabled && g.assignments.some((a) => a.specialRole === "echo");
+            const hasSpecialReveal = hasInitiator || hasExtraVoter || hasEcho;
 
             let specialButtonText = "START DISCUSSION";
-            if (hasInitiator && hasExtraVoter) {
-              specialButtonText = "REVEAL INITIATOR & VOTER";
+            const specialCount =
+              (hasInitiator ? 1 : 0) + (hasExtraVoter ? 1 : 0) + (hasEcho ? 1 : 0);
+            if (specialCount > 1) {
+              specialButtonText = "REVEAL PUBLIC ROLES";
             } else if (hasInitiator) {
               specialButtonText = "REVEAL INITIATOR";
             } else if (hasExtraVoter) {
               specialButtonText = "REVEAL EXTRA VOTER";
+            } else if (hasEcho) {
+              specialButtonText = "REVEAL THE ECHO";
             }
 
             return (
@@ -2080,6 +2154,8 @@ function MatchRecapModal({
   if (voter) specialRolesList.push(`🗳️ Extra Voter: ${voter.playerName}`);
   const hunter = assignments.find((a) => a.specialRole === "bounty_hunter");
   if (hunter) specialRolesList.push(`🎯 Bounty Hunter: ${hunter.playerName}`);
+  const echo = assignments.find((a) => a.specialRole === "echo");
+  if (echo) specialRolesList.push(`🔁 Echo: ${echo.playerName}`);
 
   const dateStr = format(new Date(), "MMM d, yyyy");
 
@@ -2520,9 +2596,11 @@ export function InitiatorScreen() {
 
   const initiatorAssignment = g.assignments.find((a) => a.specialRole === "initiator");
   const extraVoterAssignment = g.assignments.find((a) => a.specialRole === "extra_voter");
+  const echoAssignment = g.assignments.find((a) => a.specialRole === "echo");
 
   const initiatorName = initiatorAssignment?.playerName;
   const extraVoterName = extraVoterAssignment?.playerName;
+  const echoName = echoAssignment?.playerName;
 
   const handleRevealRoles = () => {
     if (isOnline) {
@@ -2594,6 +2672,26 @@ export function InitiatorScreen() {
             </div>
           )}
 
+          {/* Echo Spotlight Card */}
+          {echoName && (
+            <div className="rounded-3xl bg-card p-5 card-shadow text-center border-2 border-emerald-400/60 card-ray-bg space-y-2">
+              <div className="flex justify-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 px-3 py-0.5 text-xs font-display font-black uppercase tracking-wider">
+                  <Repeat className="h-3.5 w-3.5 text-emerald-700" /> THE ECHO
+                </span>
+              </div>
+              <div className="py-1">
+                <h2 className="font-display text-3xl sm:text-4xl font-black uppercase tracking-tight text-foreground drop-shadow-sm">
+                  {echoName}
+                </h2>
+              </div>
+              <p className="text-xs font-semibold text-foreground/80 leading-snug">
+                <span className="font-extrabold text-foreground">{echoName}</span> can give an extra
+                clue to prove innocence, OR force any player to immediately give a second clue!
+              </p>
+            </div>
+          )}
+
           {/* Note Card */}
           <div className="rounded-2xl bg-yellow/15 border-2 border-yellow/40 p-3.5 card-shadow">
             <div className="flex items-start gap-2.5">
@@ -2603,8 +2701,8 @@ export function InitiatorScreen() {
                   IMPORTANT NOTE
                 </p>
                 <p className="text-xs font-semibold text-foreground/85 mt-0.5 leading-relaxed">
-                  {initiatorName && extraVoterName
-                    ? "Both roles can be either an "
+                  {[initiatorName, extraVoterName, echoName].filter(Boolean).length > 1
+                    ? "These roles can be either an "
                     : "This role can be either an "}
                   <span className="font-extrabold text-destructive">IMPOSTOR</span> or a{" "}
                   <span className="font-extrabold text-foreground">CREWMATE</span>. Listen closely

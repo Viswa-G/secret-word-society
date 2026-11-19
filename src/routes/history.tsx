@@ -10,6 +10,7 @@ import {
   Zap,
   Vote,
   Target,
+  Repeat,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -33,6 +34,30 @@ function formatTimestamp(timestamp: number) {
 }
 
 function RoleBadge({ player }: { player: MatchHistoryPlayer }) {
+  if (player.specialRole === "echo") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+        <Repeat className="h-3 w-3" /> Echo · {player.isImposter ? "Impostor" : "Crew"}
+      </span>
+    );
+  }
+
+  if (player.specialRole === "initiator") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+        <Zap className="h-3 w-3" /> Initiator · {player.isImposter ? "Impostor" : "Crew"}
+      </span>
+    );
+  }
+
+  if (player.specialRole === "extra_voter") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-100 text-purple-900 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-300 dark:border-purple-700">
+        <Vote className="h-3 w-3" /> Extra Voter · {player.isImposter ? "Impostor" : "Crew"}
+      </span>
+    );
+  }
+
   if (player.isImposter) {
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-destructive/15 text-destructive border border-destructive/30">
@@ -45,22 +70,6 @@ function RoleBadge({ player }: { player: MatchHistoryPlayer }) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-300 border border-sky-300 dark:border-sky-700">
         <Shield className="h-3 w-3" /> Angel · Crew
-      </span>
-    );
-  }
-
-  if (player.specialRole === "initiator") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-        <Zap className="h-3 w-3" /> Initiator · Crew
-      </span>
-    );
-  }
-
-  if (player.specialRole === "extra_voter") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-100 text-purple-900 dark:bg-purple-950/70 dark:text-purple-300 border border-purple-300 dark:border-purple-700">
-        <Vote className="h-3 w-3" /> Extra Voter · Crew
       </span>
     );
   }

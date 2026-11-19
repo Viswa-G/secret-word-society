@@ -25,6 +25,7 @@ import {
   Menu,
   ChevronUp,
   ChevronDown,
+  Repeat,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
@@ -564,6 +565,21 @@ export function Lobby() {
                     return;
                   }
                   g.setBountyHunterEnabled(b);
+                }}
+              />
+
+              {/* The Echo */}
+              <ToggleRow
+                icon={<Repeat className="h-5 w-5 text-emerald-500" />}
+                title="THE ECHO 🔁"
+                subtitle="Crewmate or Impostor. Can give an extra clue to prove innocence, or force any player to give an immediate second clue."
+                checked={g.echoEnabled}
+                onChange={(b) => {
+                  if (isOnline && !isHost) {
+                    toast.info("Only the Host can change this option");
+                    return;
+                  }
+                  g.setEchoEnabled(b);
                 }}
               />
             </div>

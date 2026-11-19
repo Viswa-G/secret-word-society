@@ -84,6 +84,7 @@ type GameState = {
   initiatorEnabled: boolean;
   extraVoterEnabled: boolean;
   bountyHunterEnabled: boolean;
+  echoEnabled: boolean;
 
   // Round / Status
   phase: Phase;
@@ -134,6 +135,7 @@ type GameState = {
   setInitiatorEnabled: (b: boolean) => void;
   setExtraVoterEnabled: (b: boolean) => void;
   setBountyHunterEnabled: (b: boolean) => void;
+  setEchoEnabled: (b: boolean) => void;
 
   // Session Scoreboard
   score: {
@@ -261,6 +263,7 @@ export const useGame = create<GameState>()(
       initiatorEnabled: true,
       extraVoterEnabled: true,
       bountyHunterEnabled: true,
+      echoEnabled: true,
 
       score: {
         crewWins: 0,
@@ -611,6 +614,24 @@ export const useGame = create<GameState>()(
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: get().extraVoterEnabled,
             bountyHunterEnabled: b,
+            echoEnabled: get().echoEnabled,
+          });
+        }
+      },
+      setEchoEnabled: (b) => {
+        set({ echoEnabled: b });
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
+            imposterCount: get().imposterCount,
+            categories: get().categories,
+            customCategories: get().customCategories,
+            timeLimitEnabled: get().timeLimitEnabled,
+            imposterHintEnabled: get().imposterHintEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
+            echoEnabled: b,
           });
         }
       },
@@ -674,6 +695,7 @@ export const useGame = create<GameState>()(
             initiatorEnabled: get().initiatorEnabled,
             extraVoterEnabled: get().extraVoterEnabled,
             bountyHunterEnabled: get().bountyHunterEnabled,
+            echoEnabled: get().echoEnabled,
             availableClues: clues,
           },
         );
@@ -700,12 +722,19 @@ export const useGame = create<GameState>()(
       },
       markViewed: () => set({ cardViewed: true }),
       nextPlayer: () => {
-        const { currentPlayerIndex, assignments, initiatorEnabled, extraVoterEnabled } = get();
+        const {
+          currentPlayerIndex,
+          assignments,
+          initiatorEnabled,
+          extraVoterEnabled,
+          echoEnabled,
+        } = get();
         if (!get().cardViewed) return;
         if (currentPlayerIndex + 1 >= assignments.length) {
           const hasSpecialReveal =
             (initiatorEnabled && assignments.some((a) => a.specialRole === "initiator")) ||
-            (extraVoterEnabled && assignments.some((a) => a.specialRole === "extra_voter"));
+            (extraVoterEnabled && assignments.some((a) => a.specialRole === "extra_voter")) ||
+            (echoEnabled && assignments.some((a) => a.specialRole === "echo"));
 
           // Record match history now that all member cards are revealed
           get().recordCurrentRoundHistory();
@@ -1010,6 +1039,7 @@ export const useGame = create<GameState>()(
         initiatorEnabled: state.initiatorEnabled,
         extraVoterEnabled: state.extraVoterEnabled,
         bountyHunterEnabled: state.bountyHunterEnabled,
+        echoEnabled: state.echoEnabled,
         score: state.score,
         matchHistory: state.matchHistory,
         localPlayer: state.localPlayer,
