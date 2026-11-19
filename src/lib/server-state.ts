@@ -36,6 +36,9 @@ export type Assignment = {
   guardianAngelClue?: string;
   bountyTargetName?: string;
   bountyTargetId?: string;
+  knownTeammateName?: string;
+  knownTeammateRole?: string;
+  isRogueImposter?: boolean;
 };
 
 export type VoteRecord = {
@@ -64,6 +67,8 @@ export type Room = {
     initiatorEnabled: boolean;
     extraVoterEnabled: boolean;
     bountyHunterEnabled: boolean;
+    echoEnabled?: boolean;
+    imposterAllianceEnabled?: boolean;
   };
   players: Player[];
   phase: Phase;
@@ -230,6 +235,8 @@ export function joinRoom(
         initiatorEnabled: true,
         extraVoterEnabled: true,
         bountyHunterEnabled: true,
+        echoEnabled: true,
+        imposterAllianceEnabled: true,
       },
       players: [],
       phase: "lobby",
@@ -342,6 +349,7 @@ export function startGame(roomId: string, hostId: string) {
       initiatorEnabled: room.settings.initiatorEnabled ?? true,
       extraVoterEnabled: room.settings.extraVoterEnabled ?? true,
       bountyHunterEnabled: room.settings.bountyHunterEnabled ?? true,
+      echoEnabled: room.settings.echoEnabled ?? true,
       availableClues: clueHints,
     },
   );
@@ -352,6 +360,40 @@ export function startGame(roomId: string, hostId: string) {
     a.bountyTargetName = specialRoleAssignments[i].bountyTargetName;
     a.bountyTargetId = specialRoleAssignments[i].bountyTargetId;
   });
+
+  // Impostor Alliance & Syndicate logic:
+  // When enabled:
+  // - If 3 or more impostors: exactly 2 randomly chosen impostors become a connected duo who know each other.
+  //   Any other impostor(s) are "Rogue Impostors" (operating alone, blind to everyone).
+  // - If 2 impostors: neither knows each other (blind for balance).
+  if (room.settings.imposterAllianceEnabled ?? true) {
+    const impIndices = assignments
+      .map((a, idx) => (a.isImposter ? idx : -1))
+      .filter((idx) => idx !== -1);
+
+    if (impIndices.length >= 3) {
+      const shuffled = [...impIndices].sort(() => Math.random() - 0.5);
+      const [impA, impB] = [shuffled[0], shuffled[1]];
+      const rogues = shuffled.slice(2);
+
+      const pA = room.players.find((p) => p.id === assignments[impA].playerId);
+      const pB = room.players.find((p) => p.id === assignments[impB].playerId);
+
+      assignments[impA].knownTeammateName = pB?.name || "Player";
+      assignments[impA].knownTeammateRole = assignments[impB].specialRole
+        ? SPECIAL_ROLES_INFO[assignments[impB].specialRole!].name
+        : undefined;
+
+      assignments[impB].knownTeammateName = pA?.name || "Player";
+      assignments[impB].knownTeammateRole = assignments[impA].specialRole
+        ? SPECIAL_ROLES_INFO[assignments[impA].specialRole!].name
+        : undefined;
+
+      for (const rIdx of rogues) {
+        assignments[rIdx].isRogueImposter = true;
+      }
+    }
+  }
 
   // Set game state
   room.phase = "reveal";
@@ -750,6 +792,8 @@ export function updateSettings(
     initiatorEnabled?: boolean;
     extraVoterEnabled?: boolean;
     bountyHunterEnabled?: boolean;
+    echoEnabled?: boolean;
+    imposterAllianceEnabled?: boolean;
   },
 ) {
   const room = rooms.get(roomId);
@@ -763,5 +807,8 @@ export function updateSettings(
     initiatorEnabled: settings.initiatorEnabled ?? room.settings.initiatorEnabled ?? true,
     extraVoterEnabled: settings.extraVoterEnabled ?? room.settings.extraVoterEnabled ?? true,
     bountyHunterEnabled: settings.bountyHunterEnabled ?? room.settings.bountyHunterEnabled ?? true,
+    echoEnabled: settings.echoEnabled ?? room.settings.echoEnabled ?? true,
+    imposterAllianceEnabled:
+      settings.imposterAllianceEnabled ?? room.settings.imposterAllianceEnabled ?? true,
   };
 }

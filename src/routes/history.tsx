@@ -59,6 +59,13 @@ function RoleBadge({ player }: { player: MatchHistoryPlayer }) {
   }
 
   if (player.isImposter) {
+    if (player.isRogueImposter) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-200 border border-zinc-400 dark:border-zinc-700">
+          🕶️ Rogue Impostor
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-destructive/15 text-destructive border border-destructive/30">
         🕵️ Impostor

@@ -26,6 +26,7 @@ import {
   ChevronUp,
   ChevronDown,
   Repeat,
+  Handshake,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
@@ -580,6 +581,21 @@ export function Lobby() {
                     return;
                   }
                   g.setEchoEnabled(b);
+                }}
+              />
+
+              {/* Impostor Alliance */}
+              <ToggleRow
+                icon={<Handshake className="h-5 w-5 text-indigo-500" />}
+                title="IMPOSTOR ALLIANCE 🤝"
+                subtitle="When 3+ impostors are chosen, 2 are secretly connected as partners while others stay rogue. (With 2 impostors, both remain blind for balance.)"
+                checked={g.imposterAllianceEnabled}
+                onChange={(b) => {
+                  if (isOnline && !isHost) {
+                    toast.info("Only the Host can change this option");
+                    return;
+                  }
+                  g.setImposterAllianceEnabled(b);
                 }}
               />
             </div>

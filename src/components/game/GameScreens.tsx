@@ -98,8 +98,18 @@ function SpecialRolesReveal({ assignments }: { assignments: Assignment[] }) {
   const extraVoter = assignments.find((a) => a.specialRole === "extra_voter");
   const bountyHunter = assignments.find((a) => a.specialRole === "bounty_hunter");
   const echo = assignments.find((a) => a.specialRole === "echo");
+  const alliedPartners = assignments.filter((a) => a.knownTeammateName);
+  const rogueImpostors = assignments.filter((a) => a.isRogueImposter);
 
-  if (!guardianAngel && !initiator && !extraVoter && !bountyHunter && !echo) return null;
+  if (
+    !guardianAngel &&
+    !initiator &&
+    !extraVoter &&
+    !bountyHunter &&
+    !echo &&
+    alliedPartners.length === 0
+  )
+    return null;
 
   return (
     <div className="rounded-2xl bg-card p-4 card-shadow border border-border/80 space-y-3 text-left">
@@ -228,6 +238,30 @@ function SpecialRolesReveal({ assignments }: { assignments: Assignment[] }) {
               <p className="text-xs text-muted-foreground mt-1 leading-snug">
                 Held the power to give an extra clue or force any player to immediately give a
                 second clue.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {alliedPartners.length > 0 && (
+          <div className="rounded-xl bg-purple-500/10 p-3 border border-purple-400/30 flex items-start gap-3">
+            <span className="text-2xl shrink-0">🤝</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1 flex-wrap">
+                <span className="font-display font-extrabold text-sm text-foreground">
+                  {alliedPartners.map((a) => a.playerName).join(" & ")}
+                </span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300">
+                  ALLIED IMPOSTOR DUO
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 leading-snug">
+                Secretly knew each other's identity!
+                {rogueImpostors.length > 0 && (
+                  <span className="block mt-0.5 text-foreground/80 font-semibold">
+                    Rogue in the shadows: {rogueImpostors.map((a) => a.playerName).join(", ")}
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -387,6 +421,37 @@ function ChatPanel({
       </form>
     </div>
   );
+}
+
+function ImposterAllianceInfo({ assignment }: { assignment: Assignment }) {
+  if (assignment.knownTeammateName) {
+    return (
+      <div className="rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-3 py-1.5 text-center mt-2 space-y-0.5">
+        <p className="text-[10px] font-display font-black text-purple-700 dark:text-purple-300 uppercase tracking-wider">
+          🤝 ALLIED PARTNER: {assignment.knownTeammateName}
+          {assignment.knownTeammateRole ? ` (${assignment.knownTeammateRole})` : ""}
+        </p>
+        <p className="text-[9px] font-semibold text-purple-800/80 dark:text-purple-300/80 leading-tight">
+          You two are secretly connected! Protect each other without getting caught.
+        </p>
+      </div>
+    );
+  }
+
+  if (assignment.isRogueImposter) {
+    return (
+      <div className="rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-center mt-2 space-y-0.5">
+        <p className="text-[10px] font-display font-black text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
+          🕶️ ROGUE IMPOSTOR
+        </p>
+        <p className="text-[9px] font-semibold text-zinc-600 dark:text-zinc-400 leading-tight">
+          You work alone in the shadows! No teammates know who you are.
+        </p>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 /* ---------------- PHASE SCREENS ---------------- */
@@ -652,6 +717,7 @@ export function RevealScreen() {
                             Hint: “{assignment.clue}”
                           </p>
                         )}
+                        <ImposterAllianceInfo assignment={assignment} />
                       </div>
                     ) : (
                       <div>
@@ -685,6 +751,7 @@ export function RevealScreen() {
                             Hint: “{assignment.clue}”
                           </p>
                         )}
+                        <ImposterAllianceInfo assignment={assignment} />
                       </div>
                     ) : (
                       <div>
@@ -749,6 +816,7 @@ export function RevealScreen() {
                           Power: Give an extra clue yourself, or force any player to give an
                           immediate second clue!
                         </p>
+                        <ImposterAllianceInfo assignment={assignment} />
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -775,6 +843,7 @@ export function RevealScreen() {
                         Hint: “{assignment.clue}”
                       </p>
                     )}
+                    <ImposterAllianceInfo assignment={assignment} />
                   </div>
                 ) : (
                   <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-8 py-6 text-center card-shadow w-full max-w-70">
@@ -2141,7 +2210,8 @@ function MatchRecapModal({
   const imposterDetails = imposters
     .map((imp) => {
       const isCaught = accusedNames.includes(imp.playerName);
-      return `${imp.playerName} (${isCaught ? "Caught! 🚨" : "Escaped! 🏃"})`;
+      const status = isCaught ? "Caught! 🚨" : "Escaped! 🏃";
+      return `${imp.playerName} (${status}${imp.isRogueImposter ? " · Rogue" : ""})`;
     })
     .join(", ");
 
@@ -2156,6 +2226,10 @@ function MatchRecapModal({
   if (hunter) specialRolesList.push(`🎯 Bounty Hunter: ${hunter.playerName}`);
   const echo = assignments.find((a) => a.specialRole === "echo");
   if (echo) specialRolesList.push(`🔁 Echo: ${echo.playerName}`);
+  const allied = assignments.filter((a) => a.knownTeammateName);
+  if (allied.length > 0) {
+    specialRolesList.push(`🤝 Duo: ${allied.map((a) => a.playerName).join(" & ")}`);
+  }
 
   const dateStr = format(new Date(), "MMM d, yyyy");
 

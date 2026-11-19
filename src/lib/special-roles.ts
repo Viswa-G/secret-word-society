@@ -139,31 +139,7 @@ export function assignSpecialRoles<
     }
   }
 
-  // 2. Assign The Initiator (Crewmate OR Impostor)
-  if (options.initiatorEnabled) {
-    const eligible = Array.from(unassignedIndices);
-    if (eligible.length > 0) {
-      const chosenIdx = eligible[Math.floor(Math.random() * eligible.length)];
-      unassignedIndices.delete(chosenIdx);
-      result[chosenIdx] = {
-        specialRole: "initiator",
-      };
-    }
-  }
-
-  // 3. Assign The Extra Voter (Crewmate OR Impostor)
-  if (options.extraVoterEnabled) {
-    const eligible = Array.from(unassignedIndices);
-    if (eligible.length > 0) {
-      const chosenIdx = eligible[Math.floor(Math.random() * eligible.length)];
-      unassignedIndices.delete(chosenIdx);
-      result[chosenIdx] = {
-        specialRole: "extra_voter",
-      };
-    }
-  }
-
-  // 4. Assign The Bounty Hunter (Crewmate ONLY)
+  // 2. Assign The Bounty Hunter (Crewmate ONLY)
   if (options.bountyHunterEnabled ?? true) {
     const eligibleCrewmates = crewmateIndices.filter((idx) => unassignedIndices.has(idx));
     if (eligibleCrewmates.length > 0) {
@@ -185,14 +161,39 @@ export function assignSpecialRoles<
     }
   }
 
-  // 5. Assign The Echo (Crewmate OR Impostor)
-  if (options.echoEnabled) {
-    const eligible = Array.from(unassignedIndices);
+  // 3. Assign Flexible Roles (Initiator, Extra Voter, Echo - Crewmate OR Impostor)
+  // Impostor Special Role Capping:
+  // - If 1 to 3 impostors: at most 1 impostor can receive a special role.
+  // - If 4 or more impostors: at most 2 impostors can receive a special role.
+  const maxImposterRoles = imposterIndices.length >= 4 ? 2 : 1;
+  let imposterRolesCount = 0;
+
+  const flexibleRoles: ("initiator" | "extra_voter" | "echo")[] = [];
+  if (options.initiatorEnabled) flexibleRoles.push("initiator");
+  if (options.extraVoterEnabled) flexibleRoles.push("extra_voter");
+  if (options.echoEnabled) flexibleRoles.push("echo");
+
+  // Shuffle order of flexible roles so all have an equal chance of landing on an impostor
+  for (let i = flexibleRoles.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [flexibleRoles[i], flexibleRoles[j]] = [flexibleRoles[j], flexibleRoles[i]];
+  }
+
+  for (const role of flexibleRoles) {
+    let eligible = Array.from(unassignedIndices);
+    // If impostors have reached their special role quota, restrict remaining flexible roles to crewmates only
+    if (imposterRolesCount >= maxImposterRoles) {
+      eligible = eligible.filter((idx) => !players[idx].isImposter);
+    }
+
     if (eligible.length > 0) {
       const chosenIdx = eligible[Math.floor(Math.random() * eligible.length)];
       unassignedIndices.delete(chosenIdx);
+      if (players[chosenIdx].isImposter) {
+        imposterRolesCount++;
+      }
       result[chosenIdx] = {
-        specialRole: "echo",
+        specialRole: role,
       };
     }
   }
