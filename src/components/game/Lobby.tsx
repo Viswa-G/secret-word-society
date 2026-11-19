@@ -22,6 +22,7 @@ import {
   VolumeX,
   Trophy,
   History,
+  Menu,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useGame } from "@/lib/game-store";
@@ -30,7 +31,7 @@ import { sounds } from "@/lib/sounds";
 import { TimerModal } from "@/components/game/TimerModal";
 import { formatDuration } from "@/lib/utils";
 
-type Sheet = null | "players" | "categories" | "imposters" | "timer";
+type Sheet = null | "players" | "categories" | "imposters" | "timer" | "menu";
 
 const AVATARS = [
   "🐱",
@@ -129,28 +130,10 @@ export function Lobby() {
   return (
     <div className="min-h-dvh bg-background pb-8">
       <div className="mx-auto max-w-md px-4 pt-4">
-        {/* Header Bar */}
+        {/* Header Bar with Centered Logo & Hamburger Menu */}
         <div className="grid grid-cols-[1fr_auto_1fr] items-center pt-2">
-          {/* Sound Mute Toggle */}
-          <div className="flex items-center justify-start">
-            <button
-              type="button"
-              onClick={() => {
-                const next = sounds.toggleMute();
-                setIsMuted(next);
-                if (!next) sounds.playTap();
-              }}
-              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
-              aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
-              title={isMuted ? "Unmute sounds" : "Mute sounds"}
-            >
-              {isMuted ? (
-                <VolumeX className="h-7 w-7 text-destructive" strokeWidth={2.2} />
-              ) : (
-                <Volume2 className="h-7 w-7 text-foreground/80" strokeWidth={2.2} />
-              )}
-            </button>
-          </div>
+          {/* Left spacer for perfect centering */}
+          <div className="w-10" />
 
           {/* Game Logo Badge (matches in-game header) */}
           <div className="flex items-center justify-center">
@@ -162,24 +145,20 @@ export function Lobby() {
             </div>
           </div>
 
-          {/* Right Action Icons: History & Word Box */}
-          <div className="flex items-center justify-end gap-1">
-            <Link
-              to="/history"
-              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
-              aria-label="Match History"
-              title="Match History"
+          {/* Right Hamburger Menu Button */}
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                setSheet("menu");
+              }}
+              className="text-muted-foreground/80 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
+              aria-label="Open menu"
+              title="Menu"
             >
-              <History className="h-7 w-7 text-foreground/80" strokeWidth={2.3} />
-            </Link>
-            <Link
-              to="/word-box"
-              className="text-muted-foreground/70 hover:text-foreground flex items-center justify-center p-2 rounded-2xl hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
-              aria-label="Word Box"
-              title="Word Box"
-            >
-              <Box className="h-7 w-7 text-foreground/80" strokeWidth={2.4} />
-            </Link>
+              <Menu className="h-7 w-7 text-foreground" strokeWidth={2.4} />
+            </button>
           </div>
         </div>
 
@@ -609,6 +588,17 @@ export function Lobby() {
         </div>
       </div>
 
+      {sheet === "menu" && (
+        <MenuSheet
+          onClose={() => setSheet(null)}
+          isMuted={isMuted}
+          onToggleSound={() => {
+            const next = sounds.toggleMute();
+            setIsMuted(next);
+            if (!next) sounds.playTap();
+          }}
+        />
+      )}
       {sheet === "players" && (
         <PlayersSheet onClose={() => setSheet(null)} isOnline={isOnline} isHost={isHost} />
       )}
@@ -937,7 +927,6 @@ function CategoriesSheet({ onClose }: { onClose: () => void }) {
     </BottomSheet>
   );
 }
-
 function ImpostersSheet({ onClose }: { onClose: () => void }) {
   const g = useGame();
   const playerCount =
@@ -975,6 +964,134 @@ function ImpostersSheet({ onClose }: { onClose: () => void }) {
         className="mt-4 w-full rounded-2xl bg-foreground py-4 font-display font-extrabold text-background"
       >
         CONFIRM
+      </button>
+    </BottomSheet>
+  );
+}
+
+function MenuSheet({
+  onClose,
+  isMuted,
+  onToggleSound,
+}: {
+  onClose: () => void;
+  isMuted: boolean;
+  onToggleSound: () => void;
+}) {
+  const g = useGame();
+  return (
+    <BottomSheet title="GAME MENU" onClose={onClose}>
+      <div className="space-y-2.5 pb-2">
+        {/* Match History */}
+        <Link
+          to="/history"
+          onClick={onClose}
+          className="flex items-center justify-between p-3.5 rounded-2xl bg-secondary/50 hover:bg-secondary border border-border/70 active:scale-[0.99] transition group cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-card flex items-center justify-center text-foreground border border-border/80 shadow-xs">
+              <History className="h-5 w-5 text-pink" strokeWidth={2.3} />
+            </div>
+            <div>
+              <span className="font-display font-extrabold text-sm text-foreground block">
+                Match History
+              </span>
+              <span className="text-xs text-muted-foreground block">
+                View past matches, roles & clues
+              </span>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition" />
+        </Link>
+
+        {/* Word Box */}
+        <Link
+          to="/word-box"
+          onClick={onClose}
+          className="flex items-center justify-between p-3.5 rounded-2xl bg-secondary/50 hover:bg-secondary border border-border/70 active:scale-[0.99] transition group cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-card flex items-center justify-center text-foreground border border-border/80 shadow-xs">
+              <Box className="h-5 w-5 text-yellow fill-yellow/20" strokeWidth={2.3} />
+            </div>
+            <div>
+              <span className="font-display font-extrabold text-sm text-foreground block">
+                Word Box
+              </span>
+              <span className="text-xs text-muted-foreground block">
+                Manage custom word packs & AI generator
+              </span>
+            </div>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition" />
+        </Link>
+
+        {/* Sound Toggle */}
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-secondary/50 border border-border/70">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-card flex items-center justify-center text-foreground border border-border/80 shadow-xs">
+              {isMuted ? (
+                <VolumeX className="h-5 w-5 text-destructive" strokeWidth={2.2} />
+              ) : (
+                <Volume2 className="h-5 w-5 text-foreground" strokeWidth={2.2} />
+              )}
+            </div>
+            <div>
+              <span className="font-display font-extrabold text-sm text-foreground block">
+                Sound Effects
+              </span>
+              <span className="text-xs text-muted-foreground block">
+                {isMuted ? "Audio is muted" : "Audio is active"}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onToggleSound}
+            className={`px-3.5 py-1.5 rounded-xl font-display text-xs font-black uppercase transition active:scale-95 cursor-pointer ${
+              isMuted
+                ? "bg-secondary text-muted-foreground hover:text-foreground"
+                : "bg-lime text-foreground btn-3d"
+            }`}
+          >
+            {isMuted ? "Unmute" : "Mute"}
+          </button>
+        </div>
+
+        {/* Session Score Card */}
+        {g.score && (g.score.crewWins > 0 || g.score.imposterWins > 0) && (
+          <div className="p-3.5 rounded-2xl bg-secondary/30 border border-border/60 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Trophy className="h-5 w-5 text-yellow" />
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
+                  Session Score
+                </span>
+                <span className="text-xs font-extrabold text-foreground">
+                  Crew: {g.score.crewWins} • Impostors: {g.score.imposterWins}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playTap();
+                g.resetScore();
+              }}
+              className="text-xs font-bold text-muted-foreground/80 hover:text-foreground underline underline-offset-2"
+            >
+              Reset
+            </button>
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-3 w-full rounded-2xl bg-foreground py-3.5 font-display font-extrabold text-background cursor-pointer"
+      >
+        CLOSE
       </button>
     </BottomSheet>
   );
