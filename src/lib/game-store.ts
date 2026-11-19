@@ -63,10 +63,10 @@ export type MatchHistoryEntry = {
   gameMode: "classic" | "online";
   word: string;
   category: string;
-  winner: "crew" | "imposter" | "unknown";
-  outcome: "flawless_crew" | "partial_crew" | "imposters_win" | "direct_reveal";
+  winner?: "crew" | "imposter" | "unknown";
+  outcome?: "flawless_crew" | "partial_crew" | "imposters_win" | "direct_reveal";
   imposterCount: number;
-  accusedPlayerNames: string[];
+  accusedPlayerNames?: string[];
   players: MatchHistoryPlayer[];
 };
 
@@ -148,6 +148,11 @@ type GameState = {
   recordMatchHistory: (
     entry: Omit<MatchHistoryEntry, "id" | "timestamp"> & { id?: string; timestamp?: number },
   ) => void;
+  recordCurrentRoundHistory: (options?: {
+    winner?: "crew" | "imposter" | "unknown";
+    outcome?: "flawless_crew" | "partial_crew" | "imposters_win" | "direct_reveal";
+    accusedPlayerNames?: string[];
+  }) => void;
   deleteMatchHistoryEntry: (id: string) => void;
   clearMatchHistory: () => void;
 
@@ -454,15 +459,22 @@ export const useGame = create<GameState>()(
           const historyEntry: MatchHistoryEntry = {
             id: roundId,
             timestamp:
-              entry.timestamp ||
-              (existingIdx >= 0 ? state.matchHistory[existingIdx].timestamp : Date.now()),
+              existingIdx >= 0
+                ? state.matchHistory[existingIdx].timestamp
+                : entry.timestamp || Date.now(),
             gameMode: entry.gameMode,
             word: entry.word,
             category: entry.category,
-            winner: entry.winner,
-            outcome: entry.outcome,
+            winner:
+              entry.winner ??
+              (existingIdx >= 0 ? state.matchHistory[existingIdx].winner : "unknown"),
+            outcome:
+              entry.outcome ??
+              (existingIdx >= 0 ? state.matchHistory[existingIdx].outcome : undefined),
             imposterCount: entry.imposterCount,
-            accusedPlayerNames: entry.accusedPlayerNames,
+            accusedPlayerNames:
+              entry.accusedPlayerNames ??
+              (existingIdx >= 0 ? state.matchHistory[existingIdx].accusedPlayerNames : []),
             players: entry.players,
           };
 
@@ -476,6 +488,34 @@ export const useGame = create<GameState>()(
               currentRoundId: roundId,
             };
           }
+        });
+      },
+      recordCurrentRoundHistory: (options) => {
+        const { word, category, gameMode, assignments, currentRoundId, imposterCount } = get();
+        if (!word || assignments.length === 0) return;
+        const imposters = assignments.filter((a) => a.isImposter);
+        const accused = options?.accusedPlayerNames || get().classicAccusedPlayerNames || [];
+        const roundId =
+          currentRoundId || `round_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+        get().recordMatchHistory({
+          id: roundId,
+          gameMode,
+          word,
+          category: category || "General",
+          winner: options?.winner || "unknown",
+          outcome: options?.outcome,
+          imposterCount: imposters.length || imposterCount || 1,
+          accusedPlayerNames: accused,
+          players: assignments.map((a) => ({
+            playerName: a.playerName,
+            isImposter: a.isImposter,
+            specialRole: a.specialRole,
+            clue: a.clue,
+            guardianAngelClue: a.guardianAngelClue,
+            bountyTargetName: a.bountyTargetName,
+            wasAccused: accused.includes(a.playerName),
+          })),
         });
       },
       deleteMatchHistoryEntry: (id) =>
@@ -654,6 +694,10 @@ export const useGame = create<GameState>()(
           const hasSpecialReveal =
             (initiatorEnabled && assignments.some((a) => a.specialRole === "initiator")) ||
             (extraVoterEnabled && assignments.some((a) => a.specialRole === "extra_voter"));
+
+          // Record match history now that all member cards are revealed
+          get().recordCurrentRoundHistory();
+
           if (hasSpecialReveal) {
             set({ phase: "initiator" });
           } else {
@@ -663,12 +707,16 @@ export const useGame = create<GameState>()(
           set({ currentPlayerIndex: currentPlayerIndex + 1, cardViewed: false });
         }
       },
-      goToDiscuss: () => set({ phase: "discuss" }),
+      goToDiscuss: () => {
+        get().recordCurrentRoundHistory();
+        set({ phase: "discuss" });
+      },
       revealResult: () => {
         if (get().gameMode === "online" && get().roomId) {
           // In online mode, we transition to Result through voting, but let's allow exit/reveal actions if needed
           return;
         }
+        get().recordCurrentRoundHistory({ outcome: "direct_reveal", winner: "unknown" });
         set({ phase: "result" });
       },
       newGame: () => {

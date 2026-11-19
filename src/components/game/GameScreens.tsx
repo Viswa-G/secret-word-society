@@ -935,6 +935,11 @@ function ClassicDiscussScreen() {
   const [selectedAccused, setSelectedAccused] = useState<Assignment[]>([]);
   const [suspenseState, setSuspenseState] = useState<"idle" | "drumroll" | "revealed">("idle");
 
+  // Ensure match history is recorded as soon as discussion starts so data is never lost
+  useEffect(() => {
+    g.recordCurrentRoundHistory();
+  }, []);
+
   // Timer countdown effect
   useEffect(() => {
     if (!isRunning || timeLeft <= 0) return;
@@ -1016,7 +1021,13 @@ function ClassicDiscussScreen() {
         sounds.playDefeat();
         g.recordWin("imposter");
       }
-      g.setClassicAccusedPlayerNames(selectedAccused.map((a) => a.playerName));
+      const accusedNames = selectedAccused.map((a) => a.playerName);
+      g.setClassicAccusedPlayerNames(accusedNames);
+      g.recordCurrentRoundHistory({
+        winner: allCaught ? "crew" : "imposter",
+        outcome: allCaught ? "flawless_crew" : "imposters_win",
+        accusedPlayerNames: accusedNames,
+      });
     }, 700);
   };
 
@@ -1767,23 +1778,10 @@ function OnlineResultScreen() {
         .map((id) => g.onlinePlayers.find((p) => p.id === id)?.name)
         .filter(Boolean) as string[];
 
-      g.recordMatchHistory({
-        word: g.word,
-        category: g.category || "General",
-        gameMode: "online",
+      g.recordCurrentRoundHistory({
         winner,
         outcome,
-        imposterCount: imposters.length,
         accusedPlayerNames: eliminatedPlayerNames,
-        players: g.assignments.map((a) => ({
-          playerName: a.playerName,
-          isImposter: a.isImposter,
-          specialRole: a.specialRole,
-          clue: a.clue,
-          guardianAngelClue: a.guardianAngelClue,
-          bountyTargetName: a.bountyTargetName,
-          wasAccused: eliminatedPlayerNames.includes(a.playerName),
-        })),
       });
     }
   }, [
@@ -1994,23 +1992,10 @@ function ClassicResultScreen() {
       const winner =
         outcome === "flawless_crew" ? "crew" : outcome === "direct_reveal" ? "unknown" : "imposter";
 
-      g.recordMatchHistory({
-        word: g.word,
-        category: g.category || "General",
-        gameMode: "classic",
+      g.recordCurrentRoundHistory({
         winner,
         outcome,
-        imposterCount: imposters.length,
         accusedPlayerNames: accusedNames,
-        players: g.assignments.map((a) => ({
-          playerName: a.playerName,
-          isImposter: a.isImposter,
-          specialRole: a.specialRole,
-          clue: a.clue,
-          guardianAngelClue: a.guardianAngelClue,
-          bountyTargetName: a.bountyTargetName,
-          wasAccused: accusedNames.includes(a.playerName),
-        })),
       });
     }
   }, [
@@ -2245,6 +2230,11 @@ export function InitiatorScreen() {
   const me = isOnline ? g.onlinePlayers.find((p) => p.id === g.localPlayer.id) : null;
   const isHost = isOnline ? (me ? me.isHost : false) : true;
 
+  // Ensure match history is recorded once cards are revealed and initiator screen is shown
+  useEffect(() => {
+    g.recordCurrentRoundHistory();
+  }, []);
+
   const initiatorAssignment = g.assignments.find((a) => a.specialRole === "initiator");
   const extraVoterAssignment = g.assignments.find((a) => a.specialRole === "extra_voter");
 
@@ -2261,6 +2251,7 @@ export function InitiatorScreen() {
 
   const handleProceedToClues = () => {
     if (isOnline) {
+      g.recordCurrentRoundHistory();
       g.proceedFromInitiatorAction();
     }
   };
@@ -2368,6 +2359,7 @@ export function InitiatorScreen() {
               type="button"
               onClick={() => {
                 sounds.playTap();
+                g.recordCurrentRoundHistory();
                 g.goToDiscuss();
               }}
               className="w-full rounded-2xl bg-lime py-4.5 font-display text-xl font-extrabold text-foreground/90 card-shadow btn-3d active:scale-[0.98] transition flex items-center justify-center gap-2"
