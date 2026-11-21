@@ -11,6 +11,7 @@ import {
   Vote,
   Target,
   Repeat,
+  Radio,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -34,6 +35,14 @@ function formatTimestamp(timestamp: number) {
 }
 
 function RoleBadge({ player }: { player: MatchHistoryPlayer }) {
+  if (player.specialRole === "jammer") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-cyan-100 text-cyan-900 dark:bg-cyan-950/70 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700">
+        <Radio className="h-3 w-3" /> Jammer · {player.isImposter ? "Impostor" : "Crew"}
+      </span>
+    );
+  }
+
   if (player.specialRole === "echo") {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">

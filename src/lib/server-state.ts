@@ -68,6 +68,7 @@ export type Room = {
     extraVoterEnabled: boolean;
     bountyHunterEnabled: boolean;
     echoEnabled?: boolean;
+    jammerEnabled?: boolean;
     imposterAllianceEnabled?: boolean;
   };
   players: Player[];
@@ -236,6 +237,7 @@ export function joinRoom(
         extraVoterEnabled: true,
         bountyHunterEnabled: true,
         echoEnabled: true,
+        jammerEnabled: true,
         imposterAllianceEnabled: true,
       },
       players: [],
@@ -350,6 +352,7 @@ export function startGame(roomId: string, hostId: string) {
       extraVoterEnabled: room.settings.extraVoterEnabled ?? true,
       bountyHunterEnabled: room.settings.bountyHunterEnabled ?? true,
       echoEnabled: room.settings.echoEnabled ?? true,
+      jammerEnabled: room.settings.jammerEnabled ?? true,
       availableClues: clueHints,
     },
   );
@@ -793,6 +796,7 @@ export function updateSettings(
     extraVoterEnabled?: boolean;
     bountyHunterEnabled?: boolean;
     echoEnabled?: boolean;
+    jammerEnabled?: boolean;
     imposterAllianceEnabled?: boolean;
   },
 ) {
@@ -808,6 +812,7 @@ export function updateSettings(
     extraVoterEnabled: settings.extraVoterEnabled ?? room.settings.extraVoterEnabled ?? true,
     bountyHunterEnabled: settings.bountyHunterEnabled ?? room.settings.bountyHunterEnabled ?? true,
     echoEnabled: settings.echoEnabled ?? room.settings.echoEnabled ?? true,
+    jammerEnabled: settings.jammerEnabled ?? room.settings.jammerEnabled ?? true,
     imposterAllianceEnabled:
       settings.imposterAllianceEnabled ?? room.settings.imposterAllianceEnabled ?? true,
   };

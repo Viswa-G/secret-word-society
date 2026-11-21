@@ -27,6 +27,7 @@ import {
   UserCheck,
   Copy,
   Repeat,
+  Radio,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -98,6 +99,7 @@ function SpecialRolesReveal({ assignments }: { assignments: Assignment[] }) {
   const extraVoter = assignments.find((a) => a.specialRole === "extra_voter");
   const bountyHunter = assignments.find((a) => a.specialRole === "bounty_hunter");
   const echo = assignments.find((a) => a.specialRole === "echo");
+  const jammer = assignments.find((a) => a.specialRole === "jammer");
   const alliedPartners = assignments.filter((a) => a.knownTeammateName);
   const rogueImpostors = assignments.filter((a) => a.isRogueImposter);
 
@@ -107,6 +109,7 @@ function SpecialRolesReveal({ assignments }: { assignments: Assignment[] }) {
     !extraVoter &&
     !bountyHunter &&
     !echo &&
+    !jammer &&
     alliedPartners.length === 0
   )
     return null;
@@ -238,6 +241,31 @@ function SpecialRolesReveal({ assignments }: { assignments: Assignment[] }) {
               <p className="text-xs text-muted-foreground mt-1 leading-snug">
                 Held the power to give an extra clue or force any player to immediately give a
                 second clue.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {jammer && (
+          <div className="rounded-xl bg-secondary/50 p-3 border border-border/60 flex items-start gap-3">
+            <span className="text-2xl shrink-0">📡</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1 flex-wrap">
+                <span className="font-display font-extrabold text-sm text-foreground">
+                  {jammer.playerName}
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                    jammer.isImposter
+                      ? "bg-destructive/15 text-destructive border-destructive/30"
+                      : "bg-cyan-100 text-cyan-900 border-cyan-300"
+                  }`}
+                >
+                  THE JAMMER · {jammer.isImposter ? "IMPOSTOR" : "CREWMATE"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 leading-snug">
+                Held the power to skip giving their own clue or jam any player to skip their clue.
               </p>
             </div>
           </div>
@@ -806,6 +834,40 @@ export function RevealScreen() {
                       </div>
                     )}
                   </div>
+                ) : assignment.specialRole === "jammer" ? (
+                  <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-3 w-full max-w-70">
+                    <div
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-display font-black uppercase tracking-wider border ${
+                        assignment.isImposter
+                          ? "bg-destructive/15 text-destructive border-destructive/30"
+                          : "bg-cyan-100 text-cyan-900 border-cyan-300"
+                      }`}
+                    >
+                      <Radio className="h-4 w-4 text-cyan-600" /> THE JAMMER
+                    </div>
+                    {assignment.isImposter ? (
+                      <div className="space-y-1">
+                        <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
+                          IMPOSTOR!
+                        </p>
+                        {assignment.clue && (
+                          <p className="font-display text-base font-bold text-foreground/80">
+                            Hint: “{assignment.clue}”
+                          </p>
+                        )}
+                        <ImposterAllianceInfo assignment={assignment} />
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          SECRET WORD
+                        </p>
+                        <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
+                          {g.word}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : assignment.isImposter ? (
                   <div className="mx-4 rounded-3xl border-2 border-foreground bg-white px-6 py-6 text-center card-shadow space-y-1 w-full max-w-70">
                     <p className="font-display text-3xl font-extrabold leading-tight text-destructive">
@@ -872,11 +934,16 @@ export function RevealScreen() {
             const hasExtraVoter =
               g.extraVoterEnabled && g.assignments.some((a) => a.specialRole === "extra_voter");
             const hasEcho = g.echoEnabled && g.assignments.some((a) => a.specialRole === "echo");
-            const hasSpecialReveal = hasInitiator || hasExtraVoter || hasEcho;
+            const hasJammer =
+              g.jammerEnabled && g.assignments.some((a) => a.specialRole === "jammer");
+            const hasSpecialReveal = hasInitiator || hasExtraVoter || hasEcho || hasJammer;
 
             let specialButtonText = "START DISCUSSION";
             const specialCount =
-              (hasInitiator ? 1 : 0) + (hasExtraVoter ? 1 : 0) + (hasEcho ? 1 : 0);
+              (hasInitiator ? 1 : 0) +
+              (hasExtraVoter ? 1 : 0) +
+              (hasEcho ? 1 : 0) +
+              (hasJammer ? 1 : 0);
             if (specialCount > 1) {
               specialButtonText = "REVEAL PUBLIC ROLES";
             } else if (hasInitiator) {
@@ -885,6 +952,8 @@ export function RevealScreen() {
               specialButtonText = "REVEAL EXTRA VOTER";
             } else if (hasEcho) {
               specialButtonText = "REVEAL THE ECHO";
+            } else if (hasJammer) {
+              specialButtonText = "REVEAL THE JAMMER";
             }
 
             return (
@@ -2199,6 +2268,8 @@ function MatchRecapModal({
   if (hunter) specialRolesList.push(`🎯 Bounty Hunter: ${hunter.playerName}`);
   const echo = assignments.find((a) => a.specialRole === "echo");
   if (echo) specialRolesList.push(`🔁 Echo: ${echo.playerName}`);
+  const jammer = assignments.find((a) => a.specialRole === "jammer");
+  if (jammer) specialRolesList.push(`📡 Jammer: ${jammer.playerName}`);
   const allied = assignments.filter((a) => a.knownTeammateName);
   if (allied.length > 0) {
     specialRolesList.push(`🤝 Duo: ${allied.map((a) => a.playerName).join(" & ")}`);
@@ -2644,10 +2715,12 @@ export function InitiatorScreen() {
   const initiatorAssignment = g.assignments.find((a) => a.specialRole === "initiator");
   const extraVoterAssignment = g.assignments.find((a) => a.specialRole === "extra_voter");
   const echoAssignment = g.assignments.find((a) => a.specialRole === "echo");
+  const jammerAssignment = g.assignments.find((a) => a.specialRole === "jammer");
 
   const initiatorName = initiatorAssignment?.playerName;
   const extraVoterName = extraVoterAssignment?.playerName;
   const echoName = echoAssignment?.playerName;
+  const jammerName = jammerAssignment?.playerName;
 
   const handleRevealRoles = () => {
     if (isOnline) {
@@ -2739,6 +2812,26 @@ export function InitiatorScreen() {
             </div>
           )}
 
+          {/* Jammer Spotlight Card */}
+          {jammerName && (
+            <div className="rounded-3xl bg-card p-5 card-shadow text-center border-2 border-cyan-400/60 card-ray-bg space-y-2">
+              <div className="flex justify-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-100 text-cyan-900 border border-cyan-300 px-3 py-0.5 text-xs font-display font-black uppercase tracking-wider">
+                  <Radio className="h-3.5 w-3.5 text-cyan-700" /> THE JAMMER
+                </span>
+              </div>
+              <div className="py-1">
+                <h2 className="font-display text-3xl sm:text-4xl font-black uppercase tracking-tight text-foreground drop-shadow-sm">
+                  {jammerName}
+                </h2>
+              </div>
+              <p className="text-xs font-semibold text-foreground/80 leading-snug">
+                <span className="font-extrabold text-foreground">{jammerName}</span> can skip giving
+                their own clue, OR jam any player to skip their clue!
+              </p>
+            </div>
+          )}
+
           {/* Note Card */}
           <div className="rounded-2xl bg-yellow/15 border-2 border-yellow/40 p-3.5 card-shadow">
             <div className="flex items-start gap-2.5">
@@ -2748,7 +2841,7 @@ export function InitiatorScreen() {
                   IMPORTANT NOTE
                 </p>
                 <p className="text-xs font-semibold text-foreground/85 mt-0.5 leading-relaxed">
-                  {[initiatorName, extraVoterName, echoName].filter(Boolean).length > 1
+                  {[initiatorName, extraVoterName, echoName, jammerName].filter(Boolean).length > 1
                     ? "These roles can be either an "
                     : "This role can be either an "}
                   <span className="font-extrabold text-destructive">IMPOSTOR</span> or a{" "}

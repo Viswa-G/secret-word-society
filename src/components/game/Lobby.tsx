@@ -26,6 +26,7 @@ import {
   ChevronUp,
   ChevronDown,
   Repeat,
+  Radio,
   Handshake,
 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
@@ -581,6 +582,21 @@ export function Lobby() {
                     return;
                   }
                   g.setEchoEnabled(b);
+                }}
+              />
+
+              {/* The Jammer */}
+              <ToggleRow
+                icon={<Radio className="h-5 w-5 text-cyan-500" />}
+                title="THE JAMMER 📡"
+                subtitle="Crewmate or Impostor. Can skip giving their own clue, or jam any player to skip their clue this round."
+                checked={g.jammerEnabled}
+                onChange={(b) => {
+                  if (isOnline && !isHost) {
+                    toast.info("Only the Host can change this option");
+                    return;
+                  }
+                  g.setJammerEnabled(b);
                 }}
               />
 

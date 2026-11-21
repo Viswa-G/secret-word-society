@@ -1,4 +1,5 @@
-export type SpecialRole = "guardian_angel" | "initiator" | "extra_voter" | "bounty_hunter" | "echo";
+export type SpecialRole =
+  "guardian_angel" | "initiator" | "extra_voter" | "bounty_hunter" | "echo" | "jammer";
 
 export type SpecialRoleInfo = {
   id: SpecialRole;
@@ -62,6 +63,17 @@ export const SPECIAL_ROLES_INFO: Record<SpecialRole, SpecialRoleInfo> = {
     cardPowerText:
       "Trigger an Echo! Give an extra clue yourself to prove innocence, or force another player to give an immediate second clue!",
   },
+  jammer: {
+    id: "jammer",
+    name: "The Jammer",
+    icon: "📡",
+    team: "any",
+    teamLabel: "Crewmate or Impostor",
+    description:
+      "Can skip giving their own clue, or jam any player to force them to skip their clue this round.",
+    cardPowerText:
+      "Jam the signal! Skip giving your own clue, or choose any player to skip their clue this round!",
+  },
 };
 
 export type SpecialRoleAssignment = {
@@ -77,6 +89,7 @@ export type RoleAssignmentOptions = {
   extraVoterEnabled: boolean;
   bountyHunterEnabled?: boolean;
   echoEnabled?: boolean;
+  jammerEnabled?: boolean;
   availableClues: string[];
 };
 
@@ -168,10 +181,11 @@ export function assignSpecialRoles<
   const maxImposterRoles = imposterIndices.length >= 4 ? 2 : 1;
   let imposterRolesCount = 0;
 
-  const flexibleRoles: ("initiator" | "extra_voter" | "echo")[] = [];
+  const flexibleRoles: ("initiator" | "extra_voter" | "echo" | "jammer")[] = [];
   if (options.initiatorEnabled) flexibleRoles.push("initiator");
   if (options.extraVoterEnabled) flexibleRoles.push("extra_voter");
   if (options.echoEnabled) flexibleRoles.push("echo");
+  if (options.jammerEnabled) flexibleRoles.push("jammer");
 
   // Shuffle order of flexible roles so all have an equal chance of landing on an impostor
   for (let i = flexibleRoles.length - 1; i > 0; i--) {

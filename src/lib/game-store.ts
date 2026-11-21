@@ -89,6 +89,7 @@ type GameState = {
   extraVoterEnabled: boolean;
   bountyHunterEnabled: boolean;
   echoEnabled: boolean;
+  jammerEnabled: boolean;
   imposterAllianceEnabled: boolean;
 
   // Round / Status
@@ -141,6 +142,7 @@ type GameState = {
   setExtraVoterEnabled: (b: boolean) => void;
   setBountyHunterEnabled: (b: boolean) => void;
   setEchoEnabled: (b: boolean) => void;
+  setJammerEnabled: (b: boolean) => void;
   setImposterAllianceEnabled: (b: boolean) => void;
 
   // Session Scoreboard
@@ -270,6 +272,7 @@ export const useGame = create<GameState>()(
       extraVoterEnabled: true,
       bountyHunterEnabled: true,
       echoEnabled: true,
+      jammerEnabled: true,
       imposterAllianceEnabled: true,
 
       score: {
@@ -649,6 +652,26 @@ export const useGame = create<GameState>()(
             extraVoterEnabled: get().extraVoterEnabled,
             bountyHunterEnabled: get().bountyHunterEnabled,
             echoEnabled: b,
+            jammerEnabled: get().jammerEnabled,
+            imposterAllianceEnabled: get().imposterAllianceEnabled,
+          });
+        }
+      },
+      setJammerEnabled: (b) => {
+        set({ jammerEnabled: b });
+        if (get().gameMode === "online" && get().roomId) {
+          sendAction(get().roomId!, get().localPlayer.id, "updateSettings", {
+            imposterCount: get().imposterCount,
+            categories: get().categories,
+            customCategories: get().customCategories,
+            timeLimitEnabled: get().timeLimitEnabled,
+            imposterHintEnabled: get().imposterHintEnabled,
+            guardianAngelEnabled: get().guardianAngelEnabled,
+            initiatorEnabled: get().initiatorEnabled,
+            extraVoterEnabled: get().extraVoterEnabled,
+            bountyHunterEnabled: get().bountyHunterEnabled,
+            echoEnabled: get().echoEnabled,
+            jammerEnabled: b,
             imposterAllianceEnabled: get().imposterAllianceEnabled,
           });
         }
@@ -667,6 +690,7 @@ export const useGame = create<GameState>()(
             extraVoterEnabled: get().extraVoterEnabled,
             bountyHunterEnabled: get().bountyHunterEnabled,
             echoEnabled: get().echoEnabled,
+            jammerEnabled: get().jammerEnabled,
             imposterAllianceEnabled: b,
           });
         }
@@ -732,6 +756,7 @@ export const useGame = create<GameState>()(
             extraVoterEnabled: get().extraVoterEnabled,
             bountyHunterEnabled: get().bountyHunterEnabled,
             echoEnabled: get().echoEnabled,
+            jammerEnabled: get().jammerEnabled,
             availableClues: clues,
           },
         );
@@ -797,13 +822,15 @@ export const useGame = create<GameState>()(
           initiatorEnabled,
           extraVoterEnabled,
           echoEnabled,
+          jammerEnabled,
         } = get();
         if (!get().cardViewed) return;
         if (currentPlayerIndex + 1 >= assignments.length) {
           const hasSpecialReveal =
             (initiatorEnabled && assignments.some((a) => a.specialRole === "initiator")) ||
             (extraVoterEnabled && assignments.some((a) => a.specialRole === "extra_voter")) ||
-            (echoEnabled && assignments.some((a) => a.specialRole === "echo"));
+            (echoEnabled && assignments.some((a) => a.specialRole === "echo")) ||
+            (jammerEnabled && assignments.some((a) => a.specialRole === "jammer"));
 
           // Record match history now that all member cards are revealed
           get().recordCurrentRoundHistory();
@@ -930,6 +957,7 @@ export const useGame = create<GameState>()(
               extraVoterEnabled: get().extraVoterEnabled,
               bountyHunterEnabled: get().bountyHunterEnabled,
               echoEnabled: get().echoEnabled,
+              jammerEnabled: get().jammerEnabled,
               imposterAllianceEnabled: get().imposterAllianceEnabled,
             };
 
@@ -946,6 +974,7 @@ export const useGame = create<GameState>()(
               (serverSettings.extraVoterEnabled ?? true) === localSettings.extraVoterEnabled &&
               (serverSettings.bountyHunterEnabled ?? true) === localSettings.bountyHunterEnabled &&
               (serverSettings.echoEnabled ?? true) === localSettings.echoEnabled &&
+              (serverSettings.jammerEnabled ?? true) === localSettings.jammerEnabled &&
               (serverSettings.imposterAllianceEnabled ?? true) ===
                 localSettings.imposterAllianceEnabled &&
               JSON.stringify(serverSettings.categories) ===
@@ -970,6 +999,7 @@ export const useGame = create<GameState>()(
                   extraVoterEnabled: data.settings.extraVoterEnabled ?? true,
                   bountyHunterEnabled: data.settings.bountyHunterEnabled ?? true,
                   echoEnabled: data.settings.echoEnabled ?? true,
+                  jammerEnabled: data.settings.jammerEnabled ?? true,
                   imposterAllianceEnabled: data.settings.imposterAllianceEnabled ?? true,
                 };
 
@@ -1122,6 +1152,7 @@ export const useGame = create<GameState>()(
         extraVoterEnabled: state.extraVoterEnabled,
         bountyHunterEnabled: state.bountyHunterEnabled,
         echoEnabled: state.echoEnabled,
+        jammerEnabled: state.jammerEnabled,
         imposterAllianceEnabled: state.imposterAllianceEnabled,
         score: state.score,
         matchHistory: state.matchHistory,
