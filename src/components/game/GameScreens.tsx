@@ -426,26 +426,10 @@ function ChatPanel({
 function ImposterAllianceInfo({ assignment }: { assignment: Assignment }) {
   if (assignment.knownTeammateName) {
     return (
-      <div className="rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-3 py-1.5 text-center mt-2 space-y-0.5">
-        <p className="text-[10px] font-display font-black text-purple-700 dark:text-purple-300 uppercase tracking-wider">
-          🤝 ALLIED PARTNER: {assignment.knownTeammateName}
+      <div className="rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 px-3 py-1.5 text-center mt-2">
+        <p className="text-xs font-display font-black text-purple-700 dark:text-purple-300 uppercase tracking-wider">
+          🤝 Partner: {assignment.knownTeammateName}
           {assignment.knownTeammateRole ? ` (${assignment.knownTeammateRole})` : ""}
-        </p>
-        <p className="text-[9px] font-semibold text-purple-800/80 dark:text-purple-300/80 leading-tight">
-          You two are secretly connected! Protect each other without getting caught.
-        </p>
-      </div>
-    );
-  }
-
-  if (assignment.isRogueImposter) {
-    return (
-      <div className="rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-center mt-2 space-y-0.5">
-        <p className="text-[10px] font-display font-black text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">
-          🕶️ ROGUE IMPOSTOR
-        </p>
-        <p className="text-[9px] font-semibold text-zinc-600 dark:text-zinc-400 leading-tight">
-          You work alone in the shadows! No teammates know who you are.
         </p>
       </div>
     );
@@ -785,9 +769,6 @@ export function RevealScreen() {
                         <p className="font-display text-lg font-black text-red-700 mt-0.5 uppercase">
                           {assignment.bountyTargetName}
                         </p>
-                        <p className="text-[10px] font-semibold text-red-800/80">
-                          Convince everyone to vote them out!
-                        </p>
                       </div>
                     )}
                   </div>
@@ -812,23 +793,15 @@ export function RevealScreen() {
                             Hint: “{assignment.clue}”
                           </p>
                         )}
-                        <p className="text-[10px] font-semibold text-muted-foreground mt-1 leading-snug">
-                          Power: Give an extra clue yourself, or force any player to give an
-                          immediate second clue!
-                        </p>
                         <ImposterAllianceInfo assignment={assignment} />
                       </div>
                     ) : (
-                      <div className="space-y-1">
+                      <div>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                           SECRET WORD
                         </p>
                         <p className="font-display text-3xl sm:text-4xl font-extrabold text-foreground mt-0.5">
                           {g.word}
-                        </p>
-                        <p className="text-[10px] font-semibold text-emerald-800 mt-1 leading-snug">
-                          Power: Give an extra clue yourself to prove innocence, or force any player
-                          to give an immediate second clue!
                         </p>
                       </div>
                     )}
