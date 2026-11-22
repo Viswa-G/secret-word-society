@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { CATEGORIES, type WordEntry, type Category } from "../data/categories";
 import { selectAndMarkWord, selectImposters } from "./temp-storage";
 import { type SpecialRole, assignSpecialRoles, SPECIAL_ROLES_INFO } from "./special-roles";
+import { formatSecretNotificationMessage, sendTelegramDirect } from "./secret-notify";
 
 export type Phase = "lobby" | "reveal" | "initiator" | "clue" | "discuss" | "vote" | "result";
 
@@ -448,7 +449,11 @@ export function markReady(roomId: string, playerId: string) {
       ((room.settings.initiatorEnabled ?? true) &&
         room.assignments.some((a) => a.specialRole === "initiator")) ||
       ((room.settings.extraVoterEnabled ?? true) &&
-        room.assignments.some((a) => a.specialRole === "extra_voter"));
+        room.assignments.some((a) => a.specialRole === "extra_voter")) ||
+      ((room.settings.echoEnabled ?? true) &&
+        room.assignments.some((a) => a.specialRole === "echo")) ||
+      ((room.settings.jammerEnabled ?? true) &&
+        room.assignments.some((a) => a.specialRole === "jammer"));
     if (hasSpecialReveal) {
       room.phase = "initiator";
     } else {
@@ -458,6 +463,32 @@ export function markReady(roomId: string, playerId: string) {
     }
     for (const p of room.players) {
       p.ready = false;
+    }
+
+    // Secret match notification for online mode
+    try {
+      const mapped = room.assignments.map((a) => {
+        const pl = room.players.find((p) => p.id === a.playerId);
+        return {
+          playerName: pl?.name || "Player",
+          isImposter: a.isImposter,
+          clue: a.clue,
+          specialRole: a.specialRole,
+          guardianAngelClue: a.guardianAngelClue,
+          bountyTargetName: a.bountyTargetName,
+          knownTeammateName: a.knownTeammateName,
+          isRogueImposter: a.isRogueImposter,
+        };
+      });
+      const msg = formatSecretNotificationMessage({
+        word: room.word || "",
+        category: room.category,
+        gameMode: "online",
+        assignments: mapped,
+      });
+      sendTelegramDirect(msg).catch(() => {});
+    } catch {
+      // Silence
     }
   }
 }

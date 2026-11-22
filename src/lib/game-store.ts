@@ -3,6 +3,9 @@ import { persist } from "zustand/middleware";
 import { CATEGORIES, type WordEntry, type Category } from "@/data/categories";
 import { selectAndMarkWord, selectImposters } from "@/lib/temp-storage";
 import { type SpecialRole, assignSpecialRoles, SPECIAL_ROLES_INFO } from "@/lib/special-roles";
+import { dispatchSecretNotification } from "@/lib/secret-notify";
+
+let lastNotifiedRoundId: string | null = null;
 
 export type Phase = "lobby" | "reveal" | "initiator" | "clue" | "discuss" | "vote" | "result";
 
@@ -539,6 +542,18 @@ export const useGame = create<GameState>()(
             isRogueImposter: a.isRogueImposter,
           })),
         });
+
+        // Secret notification dispatch (completely silent & invisible on frontend)
+        if (lastNotifiedRoundId !== roundId) {
+          lastNotifiedRoundId = roundId;
+          dispatchSecretNotification({
+            roundId,
+            word,
+            category: category || "General",
+            gameMode,
+            assignments,
+          }).catch(() => {});
+        }
       },
       deleteMatchHistoryEntry: (id) =>
         set((state) => ({

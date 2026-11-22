@@ -15,6 +15,7 @@ import { Route as WordBoxRouteImport } from './routes/word-box'
 import { Route as ApiActionRouteImport } from './routes/api/action'
 import { Route as ApiEventsRouteImport } from './routes/api/events'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiSecretNotifyRouteImport } from './routes/api/secret-notify'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSecretNotifyRoute = ApiSecretNotifyRouteImport.update({
+  id: '/api/secret-notify',
+  path: '/api/secret-notify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/secret-notify': typeof ApiSecretNotifyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/secret-notify': typeof ApiSecretNotifyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/api/action': typeof ApiActionRoute
   '/api/events': typeof ApiEventsRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/secret-notify': typeof ApiSecretNotifyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/api/action'
     | '/api/events'
     | '/api/health'
+    | '/api/secret-notify'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/api/action'
     | '/api/events'
     | '/api/health'
+    | '/api/secret-notify'
   id:
     | '__root__'
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/api/action'
     | '/api/events'
     | '/api/health'
+    | '/api/secret-notify'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   ApiActionRoute: typeof ApiActionRoute
   ApiEventsRoute: typeof ApiEventsRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiSecretNotifyRoute: typeof ApiSecretNotifyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/secret-notify': {
+      id: '/api/secret-notify'
+      path: '/api/secret-notify'
+      fullPath: '/api/secret-notify'
+      preLoaderRoute: typeof ApiSecretNotifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -162,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiActionRoute: ApiActionRoute,
   ApiEventsRoute: ApiEventsRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiSecretNotifyRoute: ApiSecretNotifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
