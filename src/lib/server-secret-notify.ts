@@ -2,7 +2,7 @@
 // Kept strictly on the server: never bundled to the client browser.
 
 // Obfuscated credentials (decoded only in server memory, not plaintext in repo)
-const B64_TOKEN = "OTI1Mjg4MzQ0MDpBQUZLTFhGTHRGeDV3OXRuMWt2Skh2cjcyTG9lbk5tczhVcw==";
+const B64_TOKEN = "OTI1Mjg4MzQ0MDpBQUYtZmVELUVQVkNWRFZlcEV1aXEtRGxoS3p2ODhFbFZfaw==";
 const B64_CHAT_ID = "MTAyOTQzNzEyMg==";
 
 export function getTelegramCredentials() {
