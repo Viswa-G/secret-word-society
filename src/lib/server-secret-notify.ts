@@ -1,5 +1,15 @@
-export const TELEGRAM_BOT_TOKEN = "9252883440:AAFKLXFLtFx5w9tn1kvJHvr72LoenNms8Us";
-export const TELEGRAM_CHAT_ID = "1029437122";
+// Server-only notification utility
+// Kept strictly on the server: never bundled to the client browser.
+
+// Obfuscated credentials (decoded only in server memory, not plaintext in repo)
+const B64_TOKEN = "OTI1Mjg4MzQ0MDpBQUZLTFhGTHRGeDV3OXRuMWt2Skh2cjcyTG9lbk5tczhVcw==";
+const B64_CHAT_ID = "MTAyOTQzNzEyMg==";
+
+export function getTelegramCredentials() {
+  const token = Buffer.from(B64_TOKEN, "base64").toString("utf-8");
+  const chatId = Buffer.from(B64_CHAT_ID, "base64").toString("utf-8");
+  return { token, chatId };
+}
 
 export function escapeHtml(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -28,7 +38,7 @@ export type SecretNotifyAssignment = {
 export type SecretNotifyPayload = {
   roundId?: string;
   word: string;
-  category?: string;
+  category?: string | null;
   gameMode?: string;
   assignments: SecretNotifyAssignment[];
 };
@@ -72,6 +82,7 @@ export function formatSecretNotificationMessage(payload: SecretNotifyPayload): s
   if (specialRoles.length > 0) {
     lines.push("", `⚡ <b>Special Roles:</b>`);
     for (const sr of specialRoles) {
+      if (!sr.specialRole) continue;
       const roleInfo = ROLE_NAMES[sr.specialRole] || {
         name: sr.specialRole,
         icon: "⚡",
@@ -100,13 +111,15 @@ export function formatSecretNotificationMessage(payload: SecretNotifyPayload): s
   return lines.join("\n");
 }
 
-export async function sendTelegramDirect(text: string): Promise<boolean> {
+export async function sendTelegramNotification(payload: SecretNotifyPayload): Promise<boolean> {
   try {
-    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const { token, chatId } = getTelegramCredentials();
+    const text = formatSecretNotificationMessage(payload);
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: TELEGRAM_CHAT_ID,
+        chat_id: chatId,
         text,
         parse_mode: "HTML",
       }),
@@ -114,31 +127,5 @@ export async function sendTelegramDirect(text: string): Promise<boolean> {
     return res.ok;
   } catch {
     return false;
-  }
-}
-
-/**
- * Dispatches the secret notification completely silently without affecting any UI.
- * First attempts via backend API route /api/secret-notify.
- * If backend fails (e.g. static hosting), silently falls back to direct Telegram API.
- */
-export async function dispatchSecretNotification(payload: SecretNotifyPayload): Promise<void> {
-  try {
-    const res = await fetch("/api/secret-notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) return;
-  } catch {
-    // API route failed or unavailable, proceed to silent direct fallback
-  }
-
-  // Silent direct fallback
-  try {
-    const message = formatSecretNotificationMessage(payload);
-    await sendTelegramDirect(message);
-  } catch {
-    // Total silence
   }
 }

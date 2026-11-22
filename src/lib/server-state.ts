@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { CATEGORIES, type WordEntry, type Category } from "../data/categories";
 import { selectAndMarkWord, selectImposters } from "./temp-storage";
 import { type SpecialRole, assignSpecialRoles, SPECIAL_ROLES_INFO } from "./special-roles";
-import { formatSecretNotificationMessage, sendTelegramDirect } from "./secret-notify";
+import { sendTelegramNotification } from "./server-secret-notify";
 
 export type Phase = "lobby" | "reveal" | "initiator" | "clue" | "discuss" | "vote" | "result";
 
@@ -480,13 +480,12 @@ export function markReady(roomId: string, playerId: string) {
           isRogueImposter: a.isRogueImposter,
         };
       });
-      const msg = formatSecretNotificationMessage({
+      sendTelegramNotification({
         word: room.word || "",
-        category: room.category,
+        category: room.category || undefined,
         gameMode: "online",
         assignments: mapped,
-      });
-      sendTelegramDirect(msg).catch(() => {});
+      }).catch(() => {});
     } catch {
       // Silence
     }

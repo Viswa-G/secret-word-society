@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 import { CATEGORIES, type WordEntry, type Category } from "@/data/categories";
 import { selectAndMarkWord, selectImposters } from "@/lib/temp-storage";
 import { type SpecialRole, assignSpecialRoles, SPECIAL_ROLES_INFO } from "@/lib/special-roles";
-import { dispatchSecretNotification } from "@/lib/secret-notify";
+import { dispatchSecretNotification } from "@/lib/secret-notify-client";
 
 let lastNotifiedRoundId: string | null = null;
 
